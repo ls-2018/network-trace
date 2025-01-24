@@ -1,0 +1,12 @@
+{
+  "nftables": [
+    {
+      "delete": {
+        "table": {
+          "family": "inet",
+          "name": "Retis_Table"
+        }
+      }
+    }
+  ]
+}

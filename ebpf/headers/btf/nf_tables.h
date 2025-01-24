@@ -1,0 +1,7 @@
+enum nft_trace_types {
+    NFT_TRACETYPE_UNSPEC = 0,
+    NFT_TRACETYPE_POLICY = 1,
+    NFT_TRACETYPE_RETURN = 2,
+    NFT_TRACETYPE_RULE = 3,
+    __NFT_TRACETYPE_MAX = 4,
+};

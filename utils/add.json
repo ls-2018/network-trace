@@ -1,0 +1,42 @@
+{
+  "nftables": [
+    {
+      "add": {
+        "table": {
+          "family": "inet",
+          "name": "Retis_Table"
+        }
+      }
+    },
+    {
+      "add": {
+        "chain": {
+          "family": "inet",
+          "table": "Retis_Table",
+          "name": "Retis_Chain"
+        }
+      }
+    },
+    {
+      "insert": {
+        "rule": {
+          "family": "inet",
+          "table": "Retis_Table",
+          "chain": "Retis_Chain",
+          "expr": [
+            {
+              "mangle": {
+                "key": {
+                  "meta": {
+                    "key": "nftrace"
+                  }
+                },
+                "value": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
