@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types -cc clang -type trace_info nftabletrace ./../../ebpf/nftrace_perf.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wall -Wno-unused-variable
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace_perf.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
 
 func Run(ctx context.Context) {
 	for _, module := range nftrace.RequiredKernelModules {

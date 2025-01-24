@@ -30,7 +30,7 @@ struct nft_table {
     char *name;
     //     u16 udlen;
     //     u8 *udata;
-    // #if LINUX_VERSION_CODE > KERNEL_VERSION(6, 3, 13)
+    // #if COMPILE_LINUX_VERSION_CODE > KERNEL_VERSION(6, 3, 13)
     //     u8 validate_state;
     // #endif
 } __attribute__((preserve_access_index));
@@ -96,7 +96,7 @@ struct nft_base_chain {
 } __attribute__((preserve_access_index));
 
 struct nft_traceinfo {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+#if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
     const struct nft_pktinfo *pkt;
     const struct nft_base_chain *basechain;
     const struct nft_chain *chain;
@@ -106,7 +106,7 @@ struct nft_traceinfo {
     //   bool packet_dumped;
     //    bool trace;
 #else
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
+#if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
     bool trace;
     bool nf_trace;
     bool packet_dumped;

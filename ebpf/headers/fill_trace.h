@@ -87,7 +87,7 @@ static __always_inline void fill_trace_pkt_info(struct trace_info *trace, const 
 }
 
 static __always_inline void fill_trace(struct trace_info *trace, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
+#if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
     const struct nft_rule *rule,
 #else
     const struct nft_rule_dp *rule,

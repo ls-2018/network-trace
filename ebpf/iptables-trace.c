@@ -132,7 +132,7 @@ static __noinline int __ipt_do_table_out(struct pt_regs *ctx, uint verdict)
     return BPF_OK;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
+#if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
 SEC("kprobe/ipt_do_table")
 int BPF_KPROBE(k_ipt_do_table, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table) { return __ipt_do_table_in(ctx, skb, state, table); }
 #else

@@ -157,8 +157,8 @@ static __always_inline void bpf_tail_call_static(void *ctx, const void *map, con
                  "r2 = %[map]\n\t"
                  "r3 = %[slot]\n\t"
                  "call 12" ::[ctx] "r"(ctx),
-                 [map] "r"(map), [slot] "i"(slot)
-                 : "r0", "r1", "r2", "r3", "r4", "r5");
+        [map] "r"(map), [slot] "i"(slot)
+        : "r0", "r1", "r2", "r3", "r4", "r5");
 }
 #endif
 #endif

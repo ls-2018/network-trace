@@ -3,15 +3,16 @@
 
 #include "vmlinux.h"
 
-#include "bpf_core_read.h"
-#include "bpf_endian.h"
-#include "bpf_helpers.h"
-#include "bpf_tc.h"
-#include "bpf_tracing.h"
-#include "bpf_csum.h"
-
-#include "map_helpers.h"
-#include "bpf_kprobe_args.h"
+#include "bpf/bpf_core_read.h"
+#include "bpf/bpf_endian.h"
+#include "bpf/bpf_helpers.h"
+#include "bpf/bpf_tc.h"
+#include "bpf/bpf_tracing.h"
+#include "bpf/bpf_csum.h"
+#include "bpf/map_helpers.h"
+#include "bpf/bpf_kprobe_args.h"
+#include "bpf/bpf_cleanup.h"
+#include "bpf/bpf_compiler.h"
 
 #define ctx_ptr(ctx, mem) (void *)(unsigned long)ctx->mem
 

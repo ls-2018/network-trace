@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>动态节点图</title>
+    <!-- <script src="https://d3js.org/d3.v7.min.js"></script> -->
+    <script src="https://lf9-cdn-tos.bytecdntp.com/cdn/expire-1-M/d3/7.3.0/d3.min.js"></script>
+    <!--    <script src="./a.js"></script>-->
+    <style>
+        svg {
+            border: 1px solid #ccc;
+            margin: 20px;
+        }
+
+        .node {
+            cursor: move;
+        }
+
+        .link {
+            /*stroke: red;*/
+            stroke-dasharray: 5, 5;
+            fill: none;
+        }
+
+        .node-rect {
+            rx: 10;
+            ry: 10;
+            fill: none;
+            z-index: -1;
+            stroke: #999;
+            stroke-width: 1.5px;
+            pointer-events: all;
+        }
+
+        .link-label {
+            font-size: 12px;
+            fill: #666;
+        }
+
+        .node-label {
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div style="margin: 20px;">
+        <select id="FromNamespaceSelect"
+            style="padding: 8px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">From Namespace</option>
+        </select>
+        <select id="ToNamespaceSelect"
+            style="padding: 8px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">To Namespace</option>
+        </select>
+        <br>
+        <br>
+        <select id="FromPodSelect"
+            style="padding: 8px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">From Pod</option>
+        </select>
+        <select id="ToPodSelect" style="padding: 8px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">To Pod</option>
+        </select>
+        <br>
+        <br>
+        <select id="FromNodeSelect"
+            style="padding: 8px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">From Node</option>
+        </select>
+
+
+        <select id="ToNodeSelect" style="padding: 8px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">To Node</option>
+        </select>
+        <button onclick="getSelections()"
+            style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Get
+        </button>
+    </div>
+
+    <script>
+        const host = 'http://127.0.0.1:8000';
+        // Load namespace data when page loads
+        window.onload = async function () {
+            try {
+                const response = await fetch(host + '/api/namespaces');
+                const namespaces = await response.json();
+                const FromNamespaceSelect = document.getElementById('FromNamespaceSelect');
+                const ToNamespaceSelect = document.getElementById('ToNamespaceSelect');
+                namespaces.data.forEach(ns => {
+                    var option = document.createElement('option');
+                    option.value = ns;
+                    option.textContent = ns;
+                    FromNamespaceSelect.appendChild(option);
+                    var option = document.createElement('option');
+                    option.value = ns;
+                    option.textContent = ns;
+                    ToNamespaceSelect.appendChild(option);
+                });
+                catch_data();
+            } catch (error) {
+                console.error('Error loading namespaces:', error);
+            }
+        };
+
+        // Update pods when namespace changes
+        document.getElementById('FromNamespaceSelect').addEventListener('change', async function () {
+            try {
+                const namespace = this.value;
+                const response = await fetch(host + `/api/namespace/${namespace}/pods`);
+                const pods = await response.json();
+                const podSelect = document.getElementById('FromPodSelect');
+                podSelect.innerHTML = '<option value="">Select Pod</option>';
+                pods.data.forEach(pod => {
+                    var option = document.createElement('option');
+                    option.value = pod;
+                    option.textContent = pod;
+                    podSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading pods:', error);
+            }
+        });
+        // Update pods when namespace changes
+        document.getElementById('ToNamespaceSelect').addEventListener('change', async function () {
+            try {
+                const namespace = this.value;
+                const response = await fetch(host + `/api/namespace/${namespace}/pods`);
+                const pods = await response.json();
+                const podSelect = document.getElementById('ToPodSelect');
+                podSelect.innerHTML = '<option value="">Select Pod</option>';
+                pods.data.forEach(pod => {
+                    const option = document.createElement('option');
+                    option.value = pod;
+                    option.textContent = pod;
+                    podSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading pods:', error);
+            }
+        });
+
+        // Load nodes
+        async function loadNodes () {
+            try {
+                const response = await fetch(host + '/api/nodes');
+                const nodes = await response.json();
+                const FromNodeSelect = document.getElementById('FromNodeSelect');
+                const ToNodeSelect = document.getElementById('ToNodeSelect');
+                nodes.data.forEach(node => {
+                    const option = document.createElement('option');
+                    option.value = node;
+                    option.textContent = node;
+                    FromNodeSelect.appendChild(option);
+                    ToNodeSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading nodes:', error);
+            }
+        }
+
+        loadNodes();
+
+        // Get selections when button is clicked
+        function getSelections () {
+            const fromnamespace = document.getElementById('FromNamespaceSelect').value;
+            const frompod = document.getElementById('FromPodSelect').value;
+            const fromnode = document.getElementById('FromNodeSelect').value;
+
+            const tonamespace = document.getElementById('ToNamespaceSelect').value;
+            const topod = document.getElementById('ToPodSelect').value;
+            const tonode = document.getElementById('ToNodeSelect').value;
+
+            console.log(JSON.stringify({
+                namespace: fromnamespace,
+                pod: frompod,
+                node: fromnode,
+                tonamespace: tonamespace,
+                topod: topod,
+                tonode: tonode
+            }));
+            catch_data({
+                namespace: fromnamespace,
+                pod: frompod,
+                node: fromnode,
+                tonamespace: tonamespace,
+                topod: topod,
+                tonode: tonode
+            });
+        }
+    </script>
+
+
+    <svg id="graph" width="1000" height="600"></svg>
+
+
+    <script>
+        var GlobalID = null;
+        // 初始化SVG
+        const svg = d3.select("#graph");
+        const graphwidth = +svg.attr("width");
+        const graphheight = +svg.attr("height");
+
+
+        // 定义箭头
+        // svg.append("defs")
+        //     .append("marker")
+        //     .attr("id", "arrowhead")
+        //     .attr("viewBox", "0 -3 6 6")
+        //     .attr("refX", 20)
+        //     .attr("refY", 0)
+        //     .attr("markerWidth", 4)
+        //     .attr("markerHeight", 4)
+        //     .attr("orient", "auto")
+        //     .append("path")
+        //     .attr("d", "M0,-3L6,0L0,3")
+        //     .attr("fill", "#999");
+
+        function show (points, links) {
+            // 清理图形
+            svg.selectAll("text").remove();
+            svg.selectAll("g").remove();
+            svg.selectAll("circle").remove();
+            svg.selectAll("rect").remove();
+            // svg.selectAll("path").remove();
+
+
+            // 创建力导向图
+            const simulation = d3.forceSimulation(points)
+                .force("link", d3.forceLink(links).id(point => {
+                    return point.name
+                }).distance(100))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(graphwidth / 2, graphheight / 2))
+                .force("x", d3.forceX().x(p => {
+                    var gs = d3.groups(points, p => p.group).map(group => group[0])
+
+                    return p.group * graphwidth / gs.length
+                }))
+                .force("y", d3.forceY().y(graphheight / 2));
+
+            // 创建曲线连接线
+            const link = svg.append("g")
+                .selectAll("path")
+                .data(links)
+                .join("path")
+                .attr("class", "link")
+                .attr("stroke", l => {
+                    if (l.success) {
+                        return "green"
+                    } else {
+                        return "red"
+                    }
+                })
+                .attr("stroke-width", "3")
+                .attr("marker-end", "url(#arrowhead)");
+
+
+            // 添加连接线标签
+            const linkLabels = svg.append("g")
+                .selectAll("text")
+                .data(links)
+                .join("text")
+                .attr("class", "link-label")
+                .text(d => d.id);
+
+            // 创建移动
+            const movingPoints = svg.append("g")
+                .selectAll("polygon") // 改为polygon
+                .data(links)
+                .join("polygon") // 改为polygon
+                .attr("points", () => {
+                    var size = 5;
+                    return `-${size},0 ${size},${size} ${size},-${size}`
+                })
+                .attr("fill", line => d3.schemeCategory10[line.index % 10]);
+
+            // 创建分组矩形
+            const groups = svg.append("g")
+                .selectAll("rect")
+                .data(d3.groups(points, p => p.group).map(group => group[0]))
+                .join("rect")
+                .attr("class", "node-rect");
+
+            // 添加分组标签
+            const nodeLabels = svg.append("g")
+                .selectAll("text")
+                .data(d3.groups(points, p => p.group).map(group => group[0]))
+                .join("text")
+                .attr("class", "node-label")
+                .text(d => `Node${d}`);
+            // 更新分组标签位置
+            // nodeLabels
+            //     .attr("x", d => {
+            //         const groupNodes = points.filter(p => p.group === d);
+            //         const minX = d3.min(groupNodes, p => p.x);
+            //         const maxX = d3.max(groupNodes, p => p.x);
+            //         return (minX + maxX) / 2 - 20;
+            //     })
+            //     .attr("y", d => {
+            //         const groupNodes = points.filter(p => p.group === d);
+            //         const minY = d3.min(groupNodes, p => p.y);
+            //         const maxY = d3.max(groupNodes, p => p.y);
+            //         return (minY + maxY) / 2;
+            //     })
+            //     .attr("text-anchor", "middle")
+            //     .attr("dominant-baseline", "middle");
+
+            // 创建节点组
+            const point = svg.append("g")
+                .selectAll("g")
+                .data(points)
+                .join("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+            // 为节点添加图片
+            point.append("image")
+                .attr("xlink:href", d => d.img)
+                .attr("width", 30)
+                .attr("height", 30)
+                .attr("x", -15)
+                .attr("y", -15);
+
+
+            // 更新函数
+            function ticked () {
+                const xSpacing = 200; // 节点间距
+                const ySpacing = 80; // 节点间距
+                // 找到所有组中节点数量最多的组的节点数
+                const maxGroupSize = d3.max(
+                    d3.groups(points, p => p.group).map(group => group[1].length)
+                );
+                const groupSize = d3.groups(points, p => p.group).map(group => group[0]).length;
+                const FloorY = (maxGroupSize) * ySpacing; // 根据最大组的节点数计算基准Y坐标
+
+
+                // 更新节点位置
+                point.attr("transform", d => {
+
+                    // 获取当前节点所在的组
+                    const pointGroup = points.filter(p => p.group === d.group);
+                    // 根据source在links中第一次出现的顺序排序
+                    const firstAppearanceOrder = {};
+                    links.forEach((link, index) => {
+                        if (!(link.source.name in firstAppearanceOrder)) {
+                            firstAppearanceOrder[link.source.name] = index;
+                        }
+                    });
+
+                    // 对同组节点按照source首次出现顺序排序
+                    pointGroup.sort((pa, pb) => {
+                        const orderA = firstAppearanceOrder[pa.name] ?? Infinity;
+                        const orderB = firstAppearanceOrder[pb.name] ?? Infinity;
+                        return orderA - orderB;
+                    });
+
+
+                    const hasEntryGroup = links.some(link =>
+                        (link.source.group !== d.group && link.target.group === d.group)
+                    );
+
+                    const index = pointGroup.indexOf(d);
+                    const totalNodes = pointGroup.length;
+
+                    if (hasEntryGroup) { // 进来
+                        var targetY = FloorY - index * ySpacing; // 从下到上排列，最下面的节点在baseY位置
+                    }
+                    else {
+                        var targetY = FloorY - ((totalNodes - index - 1) * ySpacing); // 从下到上排列，最下面的节点在baseY位置
+                    }
+                    // 限制动范围，防止偏离太远
+                    const maxXDeviation = xSpacing / 2;
+                    const maxYDeviation = ySpacing / 4;
+                    var tps = {};
+                    for (var i = 0; i < links.length; i++) {
+                        if (links[i].source.name == d.name) {
+                            tps[links[i].target.name] = 1;
+                        }
+                    }
+                    var fps = {};
+                    for (var i = 0; i < links.length; i++) {
+                        if (links[i].target.name == d.name) {
+                            fps[links[i].source.name] = 1;
+                        }
+                    }
+
+
+                    // 将对象转换为数组以便使用数组方法
+                    const tpsArray = Object.keys(tps);
+                    const fpsArray = Object.keys(fps);
+
+                    // 找出交集
+                    const intersection = tpsArray.filter(x => fpsArray.includes(x));
+
+                    // 判断是否有交集
+                    const hasIntersection = intersection.length > 0;
+
+                    var targetX = graphwidth / groupSize * (d.group - 1) + graphwidth / groupSize / 2;
+                    console.log(d.name, hasIntersection, tpsArray, fpsArray);
+                    var preannular = false;
+
+
+                    for (var i = 0; i < links.length; i++) {
+                        var link = links[i];
+                        if (link.target.name == d.name) {
+                            var s = link.source.name;
+                            links.forEach(link => {
+                                if (link.source.name == d.name && link.target.name == s) {
+                                    preannular = true;
+                                }
+                            })
+                            break;
+                        }
+                    }
+
+                    if (hasIntersection && preannular) {
+                        points.forEach(p => {
+                            if (p.name == intersection[0]) {
+                                targetX = p.x + xSpacing;
+                                targetY = p.y;
+                            }
+                            return
+                        })
+                    }
+
+
+                    // // 让节点可以拖动但最终趋向计算出的y值
+                    d.x = d.x * 0.95 + d.vy * 0.05; // 添加一个缓慢趋向目标值的效果
+                    d.x = Math.max(targetX - maxXDeviation, Math.min(targetX + maxXDeviation, d.x));
+
+                    // 让节点可以拖动但最终趋向计算出的y值
+                    d.y = d.y * 0.95 + d.vy * 0.05; // 添加一个缓慢趋向目标值的效果
+                    d.y = Math.max(targetY - maxYDeviation, Math.min(targetY + maxYDeviation, d.y));
+
+                    if (hasIntersection && preannular) {
+                        d.y = targetY;
+                    }
+
+
+                    return `translate(${d.x},${d.y})`;
+                });
+
+
+                // 更新连接线路径
+                link.attr("d", d => {
+                    // // 根据连接线ID设置不同的偏移方向
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy) * 2;
+                    // console.log(`M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`);
+                    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,0 ${d.target.x},${d.target.y}`;
+                });
+
+
+                // 更新连接线标签位置
+                linkLabels.attr("x", d => (d.source.x + d.target.x) / 2)
+                    .attr("y", d => {
+                        if (d.source.x < d.target.x && d.source.y < d.target.y) {
+                            return (d.source.y + d.target.y) / 2 - 20
+                        }
+
+                        if (d.source.x < d.target.x && d.source.y > d.target.y) {
+                            return (d.source.y + d.target.y) / 2 - 20
+                        }
+                        if (d.source.x < d.target.x && d.source.y < d.target.y) {
+                            return (d.source.y + d.target.y) / 2 + 20
+                        }
+
+                        if (d.source.x > d.target.x && d.source.y > d.target.y) {
+                            return (d.source.y + d.target.y) / 2 + 20
+                        }
+
+                        return (d.source.y + d.target.y) / 2;
+                    });
+
+                // 更新分组矩形
+                groups.each(function (groupId) {
+                    const nodeNodes = points.filter(n => n.group === groupId);
+                    const x = d3.min(nodeNodes, n => n.x) - 20;
+                    const y = d3.min(nodeNodes, n => n.y) - 20;
+                    const width = d3.max(nodeNodes, n => n.x) - x + 40;
+                    const height = d3.max(nodeNodes, n => n.y) - y + 40;
+                    d3.select(this)
+                        .attr("x", x)
+                        .attr("y", y)
+                        .attr("width", width)
+                        .attr("height", height);
+
+                    nodeLabels.filter(d => d === groupId)
+                        .attr("x", x + width / 2)
+                        .attr("y", y - 10);
+                });
+
+            }
+
+            // 拖动函数
+            function dragstarted (event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
+            }
+
+            function dragged (event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+
+            function dragended (event) {
+                // if (!event.active) simulation.alphaTarget(1).restart();
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+
+
+            // 启动模拟
+            simulation.on("tick", ticked);
+
+            clearInterval(GlobalID);
+            GlobalID = setInterval(() => {
+                // 更新移动点位置
+                movingPoints.each(function (d) {
+                    const t = (Date.now() % 1000) / 1000;
+
+                    const point = d3.select(this);
+                    const path = d3.select(link.nodes()[links.indexOf(d)]);
+                    const pathLength = path.node().getTotalLength();
+                    const pos = path.node().getPointAtLength(pathLength * t);
+
+                    // Calculate angle based on path tangent
+                    const nextPos = path.node().getPointAtLength(Math.min(pathLength * (t + 0.01), pathLength));
+                    const angle = Math.atan2(nextPos.y - pos.y, nextPos.x - pos.x) * 180 / Math.PI + 180;
+                    point.attr("transform", `translate(${pos.x},${pos.y}) rotate(${angle})`);
+                });
+            }, 100);
+
+
+        }
+
+        async function catch_data (params = {}) {
+            try {
+                // 构建查询参数
+                const queryString = Object.keys(params)
+                    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+                    .join('&');
+
+                // 发送请求获取数据
+                var response = await fetch(host + `/links?${queryString}`);
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
+
+                const links = await response.json();
+
+                var response = await fetch(host + `/points?${queryString}`);
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
+
+                const points = await response.json();
+
+                // 使用获取的数据重新渲染图形
+                show(points.data, links.data);
+
+
+            } catch (error) {
+                console.error('获取数据失败:', error);
+            }
+        }
+    </script>
+
+</body>
+
+</html>

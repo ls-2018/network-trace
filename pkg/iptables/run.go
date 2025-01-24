@@ -2,8 +2,8 @@ package iptables
 
 import (
 	"context"
-	"ebpf-nftrace/pkg/assert"
 	"ebpf-nftrace/pkg/ipttrace"
+	"ebpf-nftrace/utils/assert"
 	"errors"
 	"flag"
 	"github.com/cilium/ebpf"
@@ -12,7 +12,7 @@ import (
 	"log"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types -cc clang iptablestrace ./../../ebpf/iptables-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types iptablestrace ./../../ebpf/iptables-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
 var ko string
 
 func init() {

@@ -18,7 +18,7 @@ struct {
 } events SEC(".maps");
 
 SEC("kprobe/__nft_trace_packet")
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
+#if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 int BPF_KPROBE(kprobe_nft_trace_packet, struct nft_traceinfo *info)
 #else
 int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict, const struct nft_rule_dp *rule, struct nft_traceinfo *info)
@@ -46,7 +46,7 @@ int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const str
         return 0;
     }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
+#if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
     fill_trace(trace, BPF_CORE_READ(info, pkt), BPF_CORE_READ(info, verdict), BPF_CORE_READ(info, rule), info);
 #else
     fill_trace(trace, pkt, verdict, rule, info);

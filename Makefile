@@ -10,7 +10,7 @@ SRC_FILES := $(shell find ./ebpf -maxdepth 1 -type f -name "*.c" -exec readlink 
 all: clean tidy build_kernel
 	#bpftool btf dump file /sys/kernel/btf/vmlinux   format c > ./ebpf/headers/vmlinux.h
 	#bpftool btf dump file /sys/kernel/btf/nf_tables format c > ./ebpf/headers/btf/nf_tables.h
-	echo "#define LINUX_VERSION_CODE KERNEL_VERSION(${KERNEL_MAJOR}, ${KERNEL_MINOR}, ${KERNEL_PATCH})" > ebpf/headers/version.h
+	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(${KERNEL_MAJOR}, ${KERNEL_MINOR}, ${KERNEL_PATCH})" > ebpf/headers/version.h
 	nft flush ruleset
 	iptables -F
 	iptables -A OUTPUT -d 8.8.8.8 -p icmp -j DROP
@@ -31,15 +31,15 @@ build: clean tidy build_kernel
 	#bpftool btf dump file /sys/kernel/btf/vmlinux   format c > ./ebpf/headers/vmlinux.h
 	#bpftool btf dump file /sys/kernel/btf/nf_tables format c > ./ebpf/headers/btf/nf_tables.h
 
-	echo "#define LINUX_VERSION_CODE KERNEL_VERSION(5,16,0)" > ebpf/headers/version.h
+	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(5,16,0)" > ebpf/headers/version.h
 	go generate ./...
 	go build -o ./bin/tmp/5.16.0 ./cmd/ebpf
 
-	echo "#define LINUX_VERSION_CODE KERNEL_VERSION(5,19,0)" > ebpf/headers/version.h
+	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(5,19,0)" > ebpf/headers/version.h
 	go generate ./...
 	go build -o ./bin/tmp/5.19.0 ./cmd/ebpf
 
-	echo "#define LINUX_VERSION_CODE KERNEL_VERSION(6,4,0)" > ebpf/headers/version.h
+	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(6,4,0)" > ebpf/headers/version.h
 	go generate ./...
 	go build -o ./bin/tmp/6.4.0 ./cmd/ebpf
 

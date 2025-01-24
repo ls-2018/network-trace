@@ -1,8 +1,8 @@
 #ifndef __SKBTRACER_H_
 #define __SKBTRACER_H_
 
-#include "icmp.h"
-#include "if_ether.h"
+#include "define/icmp.h"
+#include "define/if_ether.h"
 #include "nftrace.h"
 
 #define IPPROTO_HOPOPTS 0   /* IPv6 hop-by-hop options      */
