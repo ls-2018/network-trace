@@ -4,29 +4,14 @@
 #include "define/netfiler.h"
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(max_entries, 1024);
-} skbtracer_event SEC(".maps");
-
-struct ipt_do_table_args {
-    struct sk_buff *skb;
-    const struct nf_hook_state *state;
-    struct xt_table *table;
-    struct nft_chain *chain;
-    u64 start_ns;
-} __attribute__((packed)) /* __attribute__((preserve_access_index)) */;
-
-struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, u64);
     __type(value, struct ipt_do_table_args);
     __uint(max_entries, 1024);
-} skbtracer_ipt SEC(".maps");
+} skb_tracer_ipt SEC(".maps");
 
 static __always_inline bool do_trace_skb(struct event_t *event, struct config *cfg, struct pt_regs *ctx, struct sk_buff *skb)
 {
-    unsigned char *l3_header;
-    u8 ip_version, l4_proto;
 
     if (filter_pid(cfg) || filter_netns(cfg, skb) || filter_l3_and_l4_info(cfg, skb))
         return false;
@@ -36,8 +21,8 @@ static __always_inline bool do_trace_skb(struct event_t *event, struct config *c
     set_pkt_info(skb, &event->pkt_info);
     set_ether_info(skb, &event->l2_info);
 
-    l3_header = get_l3_header(skb);
-    ip_version = get_ip_version(l3_header);
+    unsigned char *l3_header = get_l3_header(skb);
+    u8 ip_version = get_ip_version(l3_header);
     if (ip_version == 4) {
         event->l2_info.l3_proto = ETH_P_IP;
         set_ipv4_info(skb, &event->l3_info);
@@ -48,7 +33,7 @@ static __always_inline bool do_trace_skb(struct event_t *event, struct config *c
         return false;
     }
 
-    l4_proto = event->l3_info.l4_proto;
+    u8 l4_proto = event->l3_info.l4_proto;
     if (l4_proto == IPPROTO_TCP) {
         set_tcp_info(skb, &event->l4_info);
     } else if (l4_proto == IPPROTO_UDP) {
@@ -74,7 +59,7 @@ static __always_inline int do_trace(struct pt_regs *ctx, struct sk_buff *skb, co
         set_callstack(event, ctx);
 
     bpf_strncpy(event->func_name, func_name, FUNCNAME_MAX_LEN);
-    bpf_perf_event_output(ctx, &skbtracer_event, BPF_F_CURRENT_CPU, event, sizeof(struct event_t));
+    bpf_perf_event_output(ctx, &skb_tracer_event, BPF_F_CURRENT_CPU, event, sizeof(struct event_t));
 
     return 0;
 }
@@ -128,8 +113,8 @@ int k_napi_gro_rcv(struct pt_regs *ctx)
 SEC("kprobe/__dev_queue_xmit")
 int k_dev_q_xmit(struct pt_regs *ctx, struct sk_buff *skb, struct net_device *sb_dev)
 {
-    struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
-    return do_trace(ctx, skb, "__dev_queue_xmit");
+    struct sk_buff *buff = (struct sk_buff *)PT_REGS_PARM1(ctx);
+    return do_trace(ctx, buff, "__dev_queue_xmit");
 }
 
 /*
@@ -170,6 +155,7 @@ int k_brnf_prero_f(struct pt_regs *ctx)
     struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM3(ctx);
     return do_trace(ctx, skb, "br_nf_pre_routing_finish");
 }
+
 // 将数据包送往本机上层处理
 SEC("kprobe/br_pass_frame_up")
 int k_br_pass_f_up(struct pt_regs *ctx)
@@ -177,6 +163,7 @@ int k_br_pass_f_up(struct pt_regs *ctx)
     struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM1(ctx);
     return do_trace(ctx, skb, "br_pass_frame_up");
 }
+
 // 根据包类型，出发对应的处理函数
 SEC("kprobe/br_netif_receive_skb")
 int k_br_nif_rcv(struct pt_regs *ctx)
@@ -193,6 +180,7 @@ int k_br_forward(struct pt_regs *ctx)
     struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2(ctx);
     return do_trace(ctx, skb, "br_forward");
 }
+
 // 转发函数
 SEC("kprobe/__br_forward")
 int k___br_fwd(struct pt_regs *ctx)
@@ -200,6 +188,7 @@ int k___br_fwd(struct pt_regs *ctx)
     struct sk_buff *skb = (struct sk_buff *)PT_REGS_PARM2(ctx);
     return do_trace(ctx, skb, "__br_forward");
 }
+
 // 公共转发接口
 SEC("kprobe/br_forward_finish")
 int k_br_fwd_f(struct pt_regs *ctx)
@@ -274,18 +263,17 @@ int k_ip_finish_out(struct pt_regs *ctx)
     return do_trace(ctx, skb, "ip_finish_output");
 }
 
-static __always_inline int __ipt_do_table_out(struct pt_regs *ctx, struct sk_buff *skb)
+static __always_inline int ipt_do_table_out(struct pt_regs *ctx, struct sk_buff *skb)
 {
     u32 pid;
-    u32 verdict;
     u64 ipt_delay;
     struct ipt_do_table_args *args;
 
     pid = bpf_get_current_pid_tgid();
-    args = bpf_map_lookup_elem(&skbtracer_ipt, &pid);
+    args = bpf_map_lookup_elem(&skb_tracer_ipt, &pid);
     if (args == NULL)
         return 0;
-    bpf_map_delete_elem(&skbtracer_ipt, &pid);
+    bpf_map_delete_elem(&skb_tracer_ipt, &pid);
 
     GET_CFG();
     GET_EVENT_BUF();
@@ -295,11 +283,11 @@ static __always_inline int __ipt_do_table_out(struct pt_regs *ctx, struct sk_buf
 
     event->flags |= SKBTRACER_EVENT_IPTABLE;
 
-    verdict = PT_REGS_RC(ctx);
+    u32 verdict = PT_REGS_RC(ctx);
     ipt_delay = bpf_ktime_get_ns() - args->start_ns;
     set_iptables_info(args->table, args->state, verdict, ipt_delay, &event->ipt_info);
 
-    bpf_perf_event_output(ctx, &skbtracer_event, BPF_F_CURRENT_CPU, event, sizeof(struct event_t));
+    bpf_perf_event_output(ctx, &skb_tracer_event, BPF_F_CURRENT_CPU, event, sizeof(struct event_t));
 
     return 0;
 }
@@ -321,6 +309,6 @@ int k___kfree_skb(struct pt_regs *ctx)
     event->flags |= SKBTRACER_EVENT_DROP;
     event->start_ns = bpf_ktime_get_ns();
     bpf_strncpy(event->func_name, "__kfree_skb", FUNCNAME_MAX_LEN);
-    bpf_perf_event_output(ctx, &skbtracer_event, BPF_F_CURRENT_CPU, event, sizeof(struct event_t));
+    bpf_perf_event_output(ctx, &skb_tracer_event, BPF_F_CURRENT_CPU, event, sizeof(struct event_t));
     return 0;
 }

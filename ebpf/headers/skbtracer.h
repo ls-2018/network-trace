@@ -1,4 +1,7 @@
 #include "bpf_all.h"
+#include "define/icmp.h"
+#include "define/netfiler.h"
+#include <nftrace.h>
 
 #define IFNAMSIZ 16
 #define ADDRSIZE 16
@@ -8,6 +11,24 @@
 
 #define NULL ((void *)0)
 #define MAX_STACKDEPTH 50
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(max_entries, 1 << 12);
+} skb_tracer_event SEC(".maps");
+
+struct ipt_do_table_args {
+    struct sk_buff *skb;
+    const struct nf_hook_state *state;
+    struct xt_table *table;
+    struct nft_chain *chain;
+    u64 start_ns;
+} __attribute__((packed)) /* __attribute__((preserve_access_index)) */;
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(max_entries, 1 << 12);
+} skbtracer_event SEC(".maps");
 
 struct config {
     u32 netns;
@@ -95,6 +116,24 @@ struct pkt_info_t {
     u8 pad[7];
 };
 
+struct iptables_trace_t {
+    char in[IFNAMSIZ];
+    char out[IFNAMSIZ];
+    char tablename[XT_TABLE_MAXNAMELEN];
+    char chainname[XT_TABLE_MAXNAMELEN];
+    u32 rulenum;
+    u32 hooknum;
+    u8 pf;
+    u8 pad[3];
+} __attribute__((packed));
+
+struct nft_trace_t {
+    char tablename[XT_TABLE_MAXNAMELEN];
+    char chainname[XT_TABLE_MAXNAMELEN];
+    u64 delay;
+    u32 verdict;
+} __attribute__((packed));
+
 struct event_t {
     char func_name[FUNCNAME_MAX_LEN];
     u64 skb;
@@ -102,22 +141,25 @@ struct event_t {
     __s32 kernel_stack_id;
     u8 flags;
     u8 pad[7];
-
     struct pkt_info_t pkt_info;
     struct l2_info_t l2_info;
     struct l3_info_t l3_info;
     struct l4_info_t l4_info;
     struct icmp_info_t icmp_info;
-    struct iptables_info_t ipt_info;
-};
 
-BPF_MAP_DEF(event_buf) = {
-    .map_type = BPF_MAP_TYPE_PERCPU_ARRAY,
-    .key_size = sizeof(u32),
-    .value_size = sizeof(struct event_t),
-    .max_entries = 1,
-};
-BPF_MAP_ADD(event_buf);
+    union {
+        struct iptables_info_t ipt_info;
+        struct iptables_trace_t trace_info;
+        struct nft_trace_t nft_info;
+    };
+} __attribute__((packed));
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, struct event_t);
+    __uint(max_entries, 1);
+} event_buf SEC(".maps");
 
 static __always_inline struct event_t *get_event_buf(void)
 {
@@ -126,7 +168,8 @@ static __always_inline struct event_t *get_event_buf(void)
     ev = bpf_map_lookup_elem(&event_buf, &ev_buff_id);
     if (!ev)
         return NULL;
-    memset(ev, 0, sizeof(*ev));
+
+    __builtin_memcpy(ev, 0, sizeof(*ev));
     return ev;
 }
 
@@ -140,25 +183,6 @@ static __always_inline struct event_t *get_event_buf(void)
 #define SKBTRACER_EVENT_IPTABLE 0x02
 #define SKBTRACER_EVENT_DROP 0x04
 #define SKBTRACER_EVENT_NEW 0x10
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(max_entries, 1 << 12);
-} skbtracer_event SEC(".maps");
-
-struct ipt_do_table_args {
-    struct sk_buff *skb;
-    const struct nf_hook_state *state;
-    struct xt_table *table;
-    u64 start_ns;
-};
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, struct ipt_do_table_args);
-    __uint(max_entries, 1024);
-} skbtracer_ipt SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);

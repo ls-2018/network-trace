@@ -1,7 +1,19 @@
-// go:build ignore
-
 #include "bpf_all.h"
 #include "iptables_trace.h"
+#include "define/if_ether.h"
+
+struct ipt_do_table_args {
+    struct sk_buff *skb;
+    const struct nf_hook_state *state;
+    struct xt_table *table;
+    struct nft_chain *chain;
+    u64 start_ns;
+} __attribute__((packed)) /* __attribute__((preserve_access_index)) */;
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(max_entries, 1 << 12);
+} skbtracer_event SEC(".maps");
 
 /**
  * Common tracepoint handler. Detect IPv4/IPv6 and

@@ -1,4 +1,3 @@
-// go:build ignore
 
 #include "bpf_all.h"
 #include "lib_xdp_tc.h"

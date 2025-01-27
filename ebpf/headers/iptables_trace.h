@@ -1,22 +1,10 @@
 #ifndef __SKBTRACER_H_
 #define __SKBTRACER_H_
 
+#include "define/netfiler.h"
 #include "define/icmp.h"
 #include "nftrace.h"
-
-#define IPPROTO_HOPOPTS 0   /* IPv6 hop-by-hop options      */
-#define IPPROTO_ROUTING 43  /* IPv6 routing header          */
-#define IPPROTO_FRAGMENT 44 /* IPv6 fragmentation header    */
-#define IPPROTO_ICMPV6 58   /* ICMPv6                       */
-#define IPPROTO_NONE 59     /* IPv6 no next header          */
-#define IPPROTO_DSTOPTS 60  /* IPv6 destination options     */
-#define IPPROTO_MH 135      /* IPv6 mobility header         */
-
-#define ICMPV6_ECHO_REQUEST 128
-#define ICMPV6_ECHO_REPLY 129
-#define ICMPV6_MGM_QUERY 130
-#define ICMPV6_MGM_REPORT 131
-#define ICMPV6_MGM_REDUCTION 132
+#include "nftrace.h"
 
 #define IFNAMSIZ 16
 #define ADDRSIZE 16
@@ -42,10 +30,12 @@ volatile const struct config CFG;
 
 union addr {
     u32 v4addr;
+
     struct {
         u64 pre;
         u64 post;
     } v6addr;
+
     u64 pad[2];
 } __attribute__((packed));
 
@@ -113,6 +103,13 @@ struct pkt_info_t {
     u8 pad[3];
 } __attribute__((packed));
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u64);
+    __type(value, struct ipt_do_table_args);
+    __uint(max_entries, 1024);
+} skbtracer_ipt SEC(".maps");
+
 struct event_t {
     u64 skb;
     u64 start_ns;
@@ -124,6 +121,7 @@ struct event_t {
     struct l3_info_t l3_info;
     struct l4_info_t l4_info;
     struct icmp_info_t icmp_info;
+
     union {
         struct iptables_info_t ipt_info;
         struct iptables_trace_t trace_info;
@@ -180,6 +178,7 @@ static __always_inline u32 get_netns(struct sk_buff *skb)
 
 union ___skb_pkt_type {
     u8 value;
+
     struct {
         u8 __pkt_type_offset[0];
         u8 pkt_type : 3;
@@ -335,14 +334,8 @@ static __always_inline bool filter_l3_and_l4_info(struct sk_buff *skb)
     u8 proto = cfg->proto;
     u16 port = cfg->port;
 
-    unsigned char *l3_header;
     unsigned char *l4_header;
 
-    u8 ip_version;
-
-    struct iphdr *iph;
-    struct ipv6hdr *ip6h;
-    u32 saddr, daddr;
     u8 l4_proto = 0;
 
     struct tcphdr *th;
@@ -350,17 +343,17 @@ static __always_inline bool filter_l3_and_l4_info(struct sk_buff *skb)
     u16 sport, dport;
 
     struct icmphdr ih;
-    u8 proto_icmp_echo_request;
-    u8 proto_icmp_echo_reply;
+    u8 proto_icmp_echo_request = 0;
+    u8 proto_icmp_echo_reply = 0;
 
     // filter ip addr
-    l3_header = get_l3_header(skb);
-    ip_version = get_ip_version(l3_header);
+    unsigned char *l3_header = get_l3_header(skb);
+    u8 ip_version = get_ip_version(l3_header);
     if (ip_version == 4) {
-        iph = (struct iphdr *)l3_header;
+        struct iphdr *iph = (struct iphdr *)l3_header;
         if (addr) {
-            saddr = BPF_CORE_READ(iph, saddr);
-            daddr = BPF_CORE_READ(iph, daddr);
+            u32 saddr = BPF_CORE_READ(iph, saddr);
+            u32 daddr = BPF_CORE_READ(iph, daddr);
             return addr != saddr && addr != daddr;
         }
 
@@ -371,7 +364,7 @@ static __always_inline bool filter_l3_and_l4_info(struct sk_buff *skb)
             proto_icmp_echo_reply = ICMP_ECHOREPLY;
         }
     } else if (ip_version == 6) {
-        ip6h = (struct ipv6hdr *)l3_header;
+        struct ipv6hdr *ip6h = (struct ipv6hdr *)l3_header;
         // l4_proto = BPF_CORE_READ(ip6h, nexthdr);
         bpf_probe_read(&l4_proto, 1, &ip6h->nexthdr);
         if (l4_proto == IPPROTO_ICMPV6) {
