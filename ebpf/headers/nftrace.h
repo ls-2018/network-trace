@@ -149,17 +149,13 @@ struct trace_info {
     u16 oif_type;
     u8 iif_name[16];
     u8 oif_name[16];
-    u16 src_port;
-    u16 dst_port;
-    u32 src_ip;
-    u32 dst_ip;
-    struct in6_addr src_ip6;
-    struct in6_addr dst_ip6;
+
+    struct ip_tuple ip_info;
+
     u64 time;
     u64 counter;
-    u8 src_mac[6];
-    u8 dst_mac[6];
-    u8 ip_proto;
+
+    struct process_info process;
 };
 
 const struct trace_info *unused __attribute__((unused));

@@ -2,7 +2,6 @@
 #define __SKBTRACER_H_
 
 #include "define/icmp.h"
-#include "define/if_ether.h"
 #include "nftrace.h"
 
 #define IPPROTO_HOPOPTS 0   /* IPv6 hop-by-hop options      */
@@ -162,26 +161,6 @@ static __always_inline struct event_t *get_event_buf(void)
 #define SKBTRACER_EVENT_IPTABLE 0x02
 #define SKBTRACER_EVENT_IPTABLES_TRACE 0x04
 #define SKBTRACER_EVENT_NFT_CHAIN 0x08
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(max_entries, 1024);
-} skbtracer_event SEC(".maps");
-
-struct ipt_do_table_args {
-    struct sk_buff *skb;
-    const struct nf_hook_state *state;
-    struct xt_table *table;
-    struct nft_chain *chain;
-    u64 start_ns;
-} __attribute__((packed)) /* __attribute__((preserve_access_index)) */;
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u64);
-    __type(value, struct ipt_do_table_args);
-    __uint(max_entries, 1024);
-} skbtracer_ipt SEC(".maps");
 
 static __always_inline u32 get_netns(struct sk_buff *skb)
 {

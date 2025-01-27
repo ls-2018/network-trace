@@ -8,7 +8,7 @@ require (
 	github.com/Asphaltt/mybtf v0.0.0-20241221150148-0614d9aca88b
 	github.com/asavie/xdp v0.3.3
 	github.com/cilium/ebpf v0.16.0
-	github.com/davecgh/go-spew v1.1.1
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/gin-contrib/cors v1.7.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/gopacket v1.1.19
@@ -16,8 +16,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/tklauser/ps v0.0.3
 	github.com/vishvananda/netlink v1.3.0
-	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
+	k8s.io/apimachinery v0.32.1
+	k8s.io/klog/v2 v2.130.1
 	sigs.k8s.io/knftables v0.0.18
 )
 
@@ -28,6 +29,7 @@ require (
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.7 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.23.0 // indirect

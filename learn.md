@@ -480,3 +480,9 @@ int freplace_handler() {
 	rtnl.Filter().Replace(&tcFilterObj)
 	defer rtnl.Filter().Delete(&tcFilterObj)
 
+
+
+- 容器ns 宿主机 ns veth 的流转
+- ipvs
+- host route
+- host <-> host

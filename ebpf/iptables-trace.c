@@ -1,9 +1,7 @@
 // go:build ignore
 
 #include "bpf_all.h"
-#include "btf/nf_tables.h"
 #include "iptables_trace.h"
-#include "version.h"
 
 /**
  * Common tracepoint handler. Detect IPv4/IPv6 and
@@ -11,16 +9,14 @@
  */
 static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, struct sk_buff *skb)
 {
-    unsigned char *l3_header;
-    u8 ip_version, l4_proto;
 
     event->flags |= SKBTRACER_EVENT_IF;
     set_event_info(skb, event);
     set_pkt_info(skb, &event->pkt_info);
     set_ether_info(skb, &event->l2_info);
 
-    l3_header = get_l3_header(skb);
-    ip_version = get_ip_version(l3_header);
+    unsigned char *l3_header = get_l3_header(skb);
+    u8 ip_version = get_ip_version(l3_header);
     if (ip_version == 4) {
         event->l2_info.l3_proto = ETH_P_IP;
         set_ipv4_info(skb, &event->l3_info);
@@ -31,7 +27,7 @@ static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, st
         return false;
     }
 
-    l4_proto = event->l3_info.l4_proto;
+    u8 l4_proto = event->l3_info.l4_proto;
     if (l4_proto == IPPROTO_TCP) {
         set_tcp_info(skb, &event->l4_info);
     } else if (l4_proto == IPPROTO_UDP) {
@@ -45,7 +41,7 @@ static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, st
     return true;
 }
 
-static __noinline int __ipt_do_table_in(struct pt_regs *ctx, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table)
+static __noinline int ipt_do_table_in(struct pt_regs *ctx, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table)
 {
     u64 pid_tgid;
     pid_tgid = bpf_get_current_pid_tgid();
@@ -98,7 +94,7 @@ static __inline int __ipt_do_table_trace(struct pt_regs *ctx, u8 pf, unsigned in
     return BPF_OK;
 }
 
-static __noinline int __ipt_do_table_out(struct pt_regs *ctx, uint verdict)
+static __noinline int ipt_do_table_out(struct pt_regs *ctx, uint verdict)
 {
     const struct nf_hook_state *state;
     struct ipt_do_table_args *args;
@@ -137,11 +133,11 @@ SEC("kprobe/ipt_do_table")
 int BPF_KPROBE(k_ipt_do_table, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table) { return __ipt_do_table_in(ctx, skb, state, table); }
 #else
 SEC("kprobe/ipt_do_table")
-int BPF_KPROBE(k_ipt_do_table, struct xt_table *table, struct sk_buff *skb, const struct nf_hook_state *state) { return __ipt_do_table_in(ctx, skb, state, table); };
+int BPF_KPROBE(k_ipt_do_table, struct xt_table *table, struct sk_buff *skb, const struct nf_hook_state *state) { return ipt_do_table_in(ctx, skb, state, table); };
 #endif
 
 SEC("kretprobe/ipt_do_table")
-int BPF_KRETPROBE(kr_ipt_do_table, uint ret) { return __ipt_do_table_out(ctx, ret); }
+int BPF_KRETPROBE(kr_ipt_do_table, uint ret) { return ipt_do_table_out(ctx, ret); }
 
 // SEC("kprobe/ip6t_do_table")
 // int BPF_KPROBE(k_ip6t_do_table, void *priv, struct sk_buff *skb,
@@ -160,15 +156,11 @@ int BPF_KRETPROBE(kr_ipt_do_table, uint ret) { return __ipt_do_table_out(ctx, re
 SEC("kprobe/nf_log_trace")
 int BPF_KPROBE(k_nf_log_trace, struct net *net, u_int8_t pf, unsigned int hooknum, struct sk_buff *skb, struct net_device *in)
 {
-    struct net_device *out;
-    char *tablename;
-    char *chainname;
-    unsigned int rulenum;
 
-    out = (typeof(out))(void *)regs_get_nth_argument(ctx, 5);
-    tablename = (typeof(tablename))(void *)regs_get_nth_argument(ctx, 8);
-    chainname = (typeof(chainname))(void *)regs_get_nth_argument(ctx, 9);
-    rulenum = (typeof(rulenum))regs_get_nth_argument(ctx, 11);
+    struct net_device *out = (void *)regs_get_nth_argument(ctx, 5);
+    char *tablename = (void *)regs_get_nth_argument(ctx, 8);
+    char *chainname = (void *)regs_get_nth_argument(ctx, 9);
+    unsigned int rulenum = regs_get_nth_argument(ctx, 11);
 
     return __ipt_do_table_trace(ctx, pf, hooknum, skb, in, out, tablename, chainname, rulenum);
 }

@@ -13,6 +13,7 @@
 #include "bpf/bpf_kprobe_args.h"
 #include "bpf/bpf_cleanup.h"
 #include "bpf/bpf_compiler.h"
+#include "common.h"
 
 #define ctx_ptr(ctx, mem) (void *)(unsigned long)ctx->mem
 

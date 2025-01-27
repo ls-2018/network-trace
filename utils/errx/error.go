@@ -1,6 +1,3 @@
-// Copyright 2024 Leon Hwang.
-// SPDX-License-Identifier: MIT
-
 package errx
 
 import (

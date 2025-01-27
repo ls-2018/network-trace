@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"ebpf-nftrace/pkg/iptables"
 	_ "ebpf-nftrace/pkg/iptables"
 	"ebpf-nftrace/pkg/nft"
 	"ebpf-nftrace/pkg/nftables"

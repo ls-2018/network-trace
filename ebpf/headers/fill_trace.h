@@ -50,7 +50,7 @@ static __always_inline void fill_trace_pkt_info(struct trace_info *trace, const 
             trace->src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
             trace->dst_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
         }
-        const struct ip4_tuple tuple = {
+        const struct ip_tuple tuple = {
             .src_port = trace->src_port,
             .dst_port = trace->dst_port,
             .src_ip = trace->src_ip,
@@ -94,6 +94,10 @@ static __always_inline void fill_trace(struct trace_info *trace, const struct nf
 #endif
     struct nft_traceinfo *info)
 {
+
+    struct process_info *p = &trace->process;
+    fill_process_info(p);
+
     trace->id = BPF_CORE_READ(pkt, skb, hash); // get_trace_id(BPF_CORE_READ(pkt, skb));
     trace->type = BPF_CORE_READ_BITFIELD_PROBED(info, type);
     trace->family = BPF_CORE_READ(info, basechain, type, family);

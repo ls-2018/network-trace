@@ -39,7 +39,7 @@ struct socket_info {
 } __attribute__((packed));
 
 struct event {
-    u32 pid;
+    struct process_info process;
     u8 comm[16];
     u32 cpu;
     u64 addr;
@@ -223,9 +223,9 @@ static __noinline bool handle_everything(void *ctx, struct sock *sk, struct even
 
         set_output(ctx, sk, event);
     }
+    struct process_info *p = &event->process;
+    fill_process_info(p);
 
-    event->pid = bpf_get_current_pid_tgid() >> 32;
-    bpf_get_current_comm(&event->comm, sizeof(event->comm));
     event->cpu = bpf_get_smp_processor_id();
     set_meta(sk, &event->meta);
 

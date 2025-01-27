@@ -24,6 +24,14 @@ int BPF_KPROBE(kprobe_nft_trace_packet, struct nft_traceinfo *info)
 int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict, const struct nft_rule_dp *rule, struct nft_traceinfo *info)
 #endif
 {
+    char comm[60];
+    bpf_get_current_comm(&comm, sizeof(comm));
+    if (comm[0] == 's') {
+        return 0;
+    } else {
+        bpf_printk("%s", comm);
+    }
+
     u32 sample_rate_key = 0;
     u64 *sample_rate_val;
 
@@ -41,9 +49,11 @@ int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const str
     }
 
     struct trace_info *trace;
-    trace = bpf_ringbuf_reserve(&events, sizeof(struct trace_info), 0);
+    int _err = 0;
+    int *err = &_err;
+    guard_ringbuf(&events, trace, err);
     if (!trace) {
-        return 0;
+        return BPF_OK;
     }
 
 #if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)

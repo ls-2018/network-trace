@@ -80,4 +80,10 @@
 #define ICMP_AFI_IP 1  /* Address Family Identifier for ipv4 */
 #define ICMP_AFI_IP6 2 /* Address Family Identifier for ipv6 */
 
+#define ICMPV6_ECHO_REQUEST 128
+#define ICMPV6_ECHO_REPLY 129
+#define ICMPV6_MGM_QUERY 130
+#define ICMPV6_MGM_REPORT 131
+#define ICMPV6_MGM_REDUCTION 132
+
 #endif /* _UAPI_LINUX_ICMP_H */

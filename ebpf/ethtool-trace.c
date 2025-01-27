@@ -1,10 +1,4 @@
-/**
- * Copyright 2024 Leon Hwang.
- * SPDX-License-Identifier: GPL-2.0
- */
-
 #include "bpf_all.h"
-#include "bpf_cleanup.h"
 
 #define IFNAMSIZ 16
 
@@ -15,13 +9,11 @@
 #define EVENT_TYPE_GENL 2
 
 struct event {
+    struct process_info process;
     u8 type;
     u8 genlhdr_cmd;
     u16 ethcmd;
-    u32 pid;
     char ifname[IFNAMSIZ];
-    char comm[TASK_COMM_LEN];
-
     struct ethnl_req_info *req;
 } __attribute__((packed));
 
@@ -81,17 +73,17 @@ static __always_inline u32 get_ethcmd(void *useraddr)
     return cmd;
 }
 
-static __always_inline int __kp_dev_ethtool(void *ctx, struct net *net, struct ifreq *ifr, void *useraddr)
+static __always_inline int kp_dev_ethtool(void *ctx, struct net *net, struct ifreq *ifr, void *useraddr)
 {
     struct event ev = {};
 
     ev.type = EVENT_TYPE_IOCTL;
     ev.ethcmd = get_ethcmd(useraddr);
 
-    ev.pid = bpf_get_current_pid_tgid() >> 32;
-
     bpf_probe_read_kernel_str(ev.ifname, sizeof(ev.ifname), ifr->ifr_ifrn.ifrn_name);
-    bpf_get_current_comm(ev.comm, sizeof(ev.comm));
+
+    struct process_info *p = &ev.process;
+    fill_process_info(p);
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &ev, sizeof(ev));
 
@@ -104,7 +96,7 @@ int kp_dev_ethtool(struct pt_regs *ctx)
     struct net *net = (typeof(net))(void *)(u64)PT_REGS_PARM1(ctx);
     struct ifreq *ifr = (typeof(ifr))(void *)(u64)PT_REGS_PARM2(ctx);
     void *useraddr = (typeof(useraddr))(void *)(u64)PT_REGS_PARM3(ctx);
-    return __kp_dev_ethtool(ctx, net, ifr, useraddr);
+    return kp_dev_ethtool(ctx, net, ifr, useraddr);
 }
 
 static __always_inline void __get_dev_name(struct event *ev, struct ethnl_req_info *req)
@@ -157,12 +149,9 @@ int krp_ethnl_dev(struct pt_regs *ctx)
     if (likely(ev->req))
         __get_dev_name(ev, ev->req);
 
-    ev->pid = bpf_get_current_pid_tgid() >> 32;
-    bpf_get_current_comm(ev->comm, sizeof(ev->comm));
-
+    struct process_info *p = &ev->process;
+    fill_process_info(p);
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, ev, SIZEOF_EVENT);
 
     return BPF_OK;
 }
-
-char __license[] SEC("license") = "GPL";

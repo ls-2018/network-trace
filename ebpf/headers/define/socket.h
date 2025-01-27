@@ -1,5 +1,3 @@
-// Copyright 2024 Leon Hwang.
-// SPDX-License-Identifier: GPL-2.0
 
 #ifndef __SOCKET_H_
 #define __SOCKET_H_

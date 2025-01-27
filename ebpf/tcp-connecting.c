@@ -15,27 +15,88 @@ struct {
     __uint(max_entries, 1);
 } socks SEC(".maps");
 
-typedef struct event {
-    __be32 saddr, daddr;
-    __be16 sport, dport;
+// typedef struct event {
+//     __be32 saddr, daddr;
+//     __be16 sport, dport;
+//     __be16 type;
+// } __attribute__((packed)) event_t;
+
+struct inet_sock_set_state_args {
+    __u64 unused;
+    const void *skaddr;
+    int oldstate;
+    int newstate;
+    __u16 sport;
+    __u16 dport;
+    __u16 family;
+    __u32 saddr;
+    __u32 daddr;
+};
+
+struct event_t {
+    int oldstate;
+    int newstate;
+    __u16 sport;
+    __u16 dport;
+    __u16 family;
+    __be32 saddr;
+    __be32 daddr;
     __be16 type;
-} __attribute__((packed)) event_t;
+} __attribute__((packed));
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 12);
 } events SEC(".maps");
 
-static __noinline void handle_new_connection(void *ctx, struct sock *sk, __be16 type)
+void copy_event(struct inet_sock_set_state_args *args, struct event_t *event)
 {
-    event_t ev = {};
-    ev.type = type;
-    ev.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    ev.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
-    ev.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-    ev.dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &ev, sizeof(ev));
+    event->oldstate = args->oldstate;
+    event->newstate = args->newstate;
+    event->sport = args->sport;
+    event->dport = args->dport;
+    event->family = args->family;
+    __builtin_memcpy(&event->saddr, &args->saddr, sizeof(event->saddr));
+    __builtin_memcpy(&event->daddr, &args->daddr, sizeof(event->daddr));
 }
+
+static __noinline void handle_new_connection(void *ctx, struct sock *sk, __be16 type, struct inet_sock_set_state_args *args)
+{
+
+    struct event_t *event;
+    int _err = 0;
+    int *err = &_err;
+    guard_ringbuf(&events, event, err);
+    if (!event) {
+        return;
+    }
+    if (ctx) {
+        event->type = type;
+        event->saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+        event->daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+        event->sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+        event->dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    } else {
+        copy_event(args, event);
+    }
+    bpf_ringbuf_submit(event, 0);
+}
+
+// struct {
+//     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+// } events SEC(".maps");
+//
+// static __noinline void handle_new_connection(void *ctx, struct sock *sk, __be16 type)
+//{
+//     event_t ev = {};
+//     ev.type = type;
+//     ev.saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+//     ev.daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+//     ev.sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+//     ev.dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+//
+//     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &ev, sizeof(ev));
+// }
 
 // 开始建立连接,构建好包
 SEC("kprobe/tcp_connect")
@@ -44,7 +105,7 @@ int k_tcp_connect(struct pt_regs *ctx)
     struct sock *sk;
     sk = (typeof(sk))PT_REGS_PARM1(ctx);
 
-    handle_new_connection(ctx, sk, 2);
+    handle_new_connection(ctx, sk, 2, NULL);
 
     return 0;
 }
@@ -58,7 +119,7 @@ int k_icsk_complete_hashdance(struct pt_regs *ctx)
     struct sock *sk;
     sk = (typeof(sk))PT_REGS_PARM2(ctx);
 
-    handle_new_connection(ctx, sk, 1);
+    handle_new_connection(ctx, sk, 1, NULL);
 
     return 0;
 }
@@ -115,17 +176,25 @@ static __always_inline struct sock *sock_from_file(__u64 ptr)
     return BPF_CORE_READ(sock, sk);
 }
 
-SEC("fentry/__sys_connect")
-int BPF_PROG(fentry___sys_connect, int fd)
-{
-    struct tcp_fd_info fd_info = {};
-    __u64 stack_id;
-
-    stack_id = get_stack_id();
-    bpf_map_update_elem(&fd_info_map, &stack_id, &fd_info, BPF_ANY);
-
-    return BPF_OK;
-}
+// SEC("fentry/__sys_connect")
+// int BPF_PROG(fentry___sys_connect, int fd)
+//{
+//     struct tcp_fd_info fd_info = {};
+//     __u64 stack_id;
+//
+//     stack_id = get_stack_id();
+//
+//     fd_info = bpf_map_lookup_and_delete(&fd_info_map, &stack_id);
+//     if (!fd_info)
+//         return BPF_OK;
+//
+//     struct sock *sk = sock_from_file(fd_info->file);
+//     if (BPF_CORE_READ(sk, __sk_common.skc_family) == AF_INET) {
+//         bpf_printk("fd-socket: connect fd=%d sock=0x%016llx retval=%d\n", fd, (__u64)sock_from_file(fd_info->file), retval);
+//         bpf_printk("fd-socket: connect lport=%d rport=%d laddr=%pI4 raddr=%pI4\n", BPF_CORE_READ(sk, __sk_common.skc_num), bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)), &sk->__sk_common.skc_rcv_saddr, &sk->__sk_common.skc_daddr);
+//     }
+//     return BPF_OK;
+// }
 
 SEC("fentry/__sys_connect_file")
 int BPF_PROG(fentry___sys_connect_file, struct file *file)
@@ -214,38 +283,11 @@ int BPF_PROG(fexit___sys_accept4, int fd, struct sockaddr *uservaddr, int addrle
     return BPF_OK;
 }
 
-struct inet_sock_set_state_args {
-    __u64 unused;
-    const void *skaddr;
-    int oldstate;
-    int newstate;
-    __u16 sport;
-    __u16 dport;
-    __u16 family;
-    __u8 saddr[4];
-    __u8 daddr[4];
-    __u8 saddr_v6[16];
-    __u8 daddr_v6[16];
-};
-
 SEC("tp/sock/inet_sock_set_state")
 int tp_inet_sock_set_state(struct inet_sock_set_state_args *args)
 {
-    struct sock *sk = (struct sock *)(__u64)args->skaddr;
-    __u16 lport, rport;
 
-    if (args->family != AF_INET && args->family != AF_INET6)
-        return BPF_OK;
-    if (args->newstate != TCP_ESTABLISHED)
-        return BPF_OK;
-
-    lport = BPF_CORE_READ(sk, __sk_common.skc_num);
-    rport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
-
-    if (args->family == AF_INET)
-        bpf_printk("fd-socket: established sock=0x%016llx lport=%d rport=%d laddr=%pI4 raddr=%pI4\n", (__u64)args->skaddr, lport, rport, &sk->__sk_common.skc_rcv_saddr, &sk->__sk_common.skc_daddr);
-    else
-        bpf_printk("fd-socket: established sock=0x%016llx lport=%d rport=%d saddr=%pI6c daddr=%pI6c\n", (__u64)args->skaddr, lport, rport, &sk->__sk_common.skc_v6_rcv_saddr, &sk->__sk_common.skc_v6_daddr);
+    handle_new_connection(NULL, NULL, 0, args);
 
     return BPF_OK;
 }

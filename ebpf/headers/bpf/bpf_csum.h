@@ -11,14 +11,24 @@ static __always_inline __u16 csum_fold_helper(__wsum sum)
     return ~((sum & 0xffff) + (sum >> 16));
 }
 
-/*
- * Use like `icmph->checksum = ipv4_csum(icmph, ICMP_ECHO_LEN);`
- */
 static __always_inline __u16 ipv4_csum(void *data_start, int data_size)
 {
     __wsum sum = 0;
     sum = bpf_csum_diff(0, 0, data_start, data_size, 0);
     return csum_fold_helper(sum);
+}
+
+// __update_icmp_checksum(icmph, sizeof(*icmph) + icmp_payload);
+static __always_inline void __update_icmp_checksum(struct icmphdr *icmph, int size)
+{
+    icmph->checksum = 0;
+    icmph->checksum = ipv4_csum(icmph, size);
+}
+
+static __always_inline void __update_ip_checksum(struct iphdr *iph)
+{
+    iph->check = 0;
+    iph->check = ipv4_csum(iph, sizeof(*iph));
 }
 
 #endif // __BPF_CSUM_H_

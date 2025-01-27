@@ -9,13 +9,12 @@
 
 #define VLAN_ID_MASK 0x0FFF
 
-#define ETH_P_IP 0x0800     /* Internet Protocol packet	*/
 #define ETH_P_8021Q 0x8100  /* 802.1Q VLAN Extended Header  */
 #define ETH_P_8021AD 0x88A8 /* 802.1ad Service VLAN		*/
 
 #define VXLAN_PORT 4789
 
-static volatile const u32 IFINDEX = 0;
+volatile const u32 IFINDEX = 0;
 
 struct vxlan_hdr {
     __be32 vx_flags;

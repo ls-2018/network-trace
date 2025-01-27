@@ -1,5 +1,3 @@
-// Copyright 2024 Leon Hwang.
-// SPDX-License-Identifier: MIT
 
 #ifndef __BPF_CLEANUP_H_
 #define __BPF_CLEANUP_H_
@@ -49,8 +47,8 @@ void guard_ringbuf_destructor(struct guard_ringbuf *guard)
         guard;                                                                                                                                                                                                                                                                                                                                                         \
     })
 
-#define guard_ringbuf(_ringbuf, _data, _err)                                                                                                                                                                                                                                                                                                                           \
-    struct guard_ringbuf _g __cleanup(guard_ringbuf_destructor) = guard_ringbuf_constructor(_ringbuf, sizeof(*data), _err);                                                                                                                                                                                                                                            \
+#define guard_ringbuf(_ringbuf, _data, err)                                                                                                                                                                                                                                                                                                                            \
+    struct guard_ringbuf _g __cleanup(guard_ringbuf_destructor) = guard_ringbuf_constructor(_ringbuf, sizeof(*_data), err);                                                                                                                                                                                                                                            \
     _data = (typeof(_data))_g.data;
 
 #endif // __BPF_CLEANUP_H_

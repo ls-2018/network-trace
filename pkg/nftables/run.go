@@ -3,6 +3,8 @@ package nftables
 import (
 	"context"
 	"ebpf-nftrace/pkg/nftrace"
+	"errors"
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
 	"golang.org/x/sys/unix"
@@ -11,7 +13,7 @@ import (
 	"unsafe"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace_perf.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
 
 func Run(ctx context.Context) {
 	for _, module := range nftrace.RequiredKernelModules {
@@ -26,7 +28,13 @@ func Run(ctx context.Context) {
 
 	objs := nftabletraceObjects{}
 	if err := loadNftabletraceObjects(&objs, nil); err != nil {
+		var ve *ebpf.VerifierError
 		log.Fatalf("failed to load bpf objects: %v", err)
+		if errors.As(err, &ve) {
+			log.Fatalf("Failed to load bpf obj: %v\n%+v", err, ve)
+		}
+		log.Fatalf("Failed to load bpf obj: %v", err)
+
 	}
 	kp, err := link.Kprobe("__nft_trace_packet", objs.KprobeNftTracePacket, nil)
 	if err != nil {
@@ -55,12 +63,13 @@ func Run(ctx context.Context) {
 			event := *(*nftabletraceTraceInfo)(unsafe.Pointer(&record.RawSample[0]))
 			i += 1
 			log.Printf(
-				"i: %d, sum: %d, id: %d, type: %s, family: %s, tbl name: %s tbl handle: %d, chain name: %s, chain handle: %d, rule handle: %d, verdict: %s, "+
+				"i: %d, sum: %d, process:%s id: %d, type: %s, family: %s, tbl name: %s tbl handle: %d, chain name: %s, chain handle: %d, rule handle: %d, verdict: %s, "+
 					"jt: %s, nfproto: %d, policy: %s, makr: %d, iif: %d, iif_type: %d, iif_name: %s, oif: %d, oif_type: %d, oif_name: %s, "+
 					"src=%s:%d, dst=%s:%d, proto=%s, mac-src: %s, mac-dst: %s, len=%d, counter=%d, ts=%d ns\n",
 				i,
 				cnt,
 				event.Id,
+				unix.ByteSliceToString(event.Process[:]),
 				nftrace.TraceType(event.Type),
 				nftrace.FamilyTable(event.Family),
 				unix.ByteSliceToString(event.TableName[:]),

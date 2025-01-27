@@ -86,7 +86,7 @@ func Run(ctx context.Context) {
 			}
 		}
 	}()
-
+	<-ctx.Done()
 }
 
 type BpfConfig struct {

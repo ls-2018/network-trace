@@ -14,7 +14,7 @@ tell application "iTerm"
 	
     -- 切换到新窗口
     tell current session of newWindow
-		write text "ssh root@ebpf"
+		write text "ssh root@vm2404"
 		write text "cd /ebpf/ebpf-nftrace"
 		write text "make  "
     end tell
@@ -26,7 +26,7 @@ tell application "iTerm"
 	end tell
 	delay 1
 	tell newSession
-        write text "ssh root@ebpf"
+        write text "ssh root@vm2404"
         write text "watch -d nft -a list ruleset"
 	end tell
 
@@ -35,7 +35,7 @@ tell application "iTerm"
 	end tell
 	delay 1
 	tell newSession
-		write text "ssh root@ebpf"
+		write text "ssh root@vm2404"
         write text "ping -c 100000 -i 1 -s 64 8.8.8.8"
 	end tell
 
@@ -44,7 +44,7 @@ tell application "iTerm"
 	end tell
 	delay 1
 	tell newSession
-		write text "ssh root@ebpf"
+		write text "ssh root@vm2404"
         write text "cat /sys/kernel/debug/tracing/trace_pipe"
 	end tell
 end tell

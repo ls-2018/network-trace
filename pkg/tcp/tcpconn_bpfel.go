@@ -54,7 +54,6 @@ type tcpconnSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnProgramSpecs struct {
 	FentrySysAccept4        *ebpf.ProgramSpec `ebpf:"fentry___sys_accept4"`
-	FentrySysConnect        *ebpf.ProgramSpec `ebpf:"fentry___sys_connect"`
 	FentrySysConnectFile    *ebpf.ProgramSpec `ebpf:"fentry___sys_connect_file"`
 	FexitSysAccept4         *ebpf.ProgramSpec `ebpf:"fexit___sys_accept4"`
 	FexitSysConnect         *ebpf.ProgramSpec `ebpf:"fexit___sys_connect"`
@@ -112,7 +111,6 @@ func (m *tcpconnMaps) Close() error {
 // It can be passed to loadTcpconnObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnPrograms struct {
 	FentrySysAccept4        *ebpf.Program `ebpf:"fentry___sys_accept4"`
-	FentrySysConnect        *ebpf.Program `ebpf:"fentry___sys_connect"`
 	FentrySysConnectFile    *ebpf.Program `ebpf:"fentry___sys_connect_file"`
 	FexitSysAccept4         *ebpf.Program `ebpf:"fexit___sys_accept4"`
 	FexitSysConnect         *ebpf.Program `ebpf:"fexit___sys_connect"`
@@ -124,7 +122,6 @@ type tcpconnPrograms struct {
 func (p *tcpconnPrograms) Close() error {
 	return _TcpconnClose(
 		p.FentrySysAccept4,
-		p.FentrySysConnect,
 		p.FentrySysConnectFile,
 		p.FexitSysAccept4,
 		p.FexitSysConnect,

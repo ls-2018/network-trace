@@ -1,0 +1,2117 @@
+{
+  "nftables": [
+    {
+      "metainfo": {
+        "version": "1.0.9",
+        "release_name": "Old Doc Yak #3",
+        "json_schema_version": 1
+      }
+    },
+    {
+      "table": {
+        "family": "ip",
+        "name": "filter",
+        "handle": 31
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "OUTPUT",
+        "handle": 1,
+        "type": "filter",
+        "hook": "output",
+        "prio": 0,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "KUBE-EXTERNAL-SERVICES",
+        "handle": 3
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "INPUT",
+        "handle": 4,
+        "type": "filter",
+        "hook": "input",
+        "prio": 0,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "FORWARD",
+        "handle": 6,
+        "type": "filter",
+        "hook": "forward",
+        "prio": 0,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "KUBE-NODEPORTS",
+        "handle": 8
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "KUBE-SERVICES",
+        "handle": 10
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "KUBE-FORWARD",
+        "handle": 13
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "KUBE-PROXY-FIREWALL",
+        "handle": 15
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "filter",
+        "name": "KUBE-PROXY-CANARY",
+        "handle": 26
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "OUTPUT",
+        "handle": 17,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 607,
+              "bytes": 50328
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-PROXY-FIREWALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "OUTPUT",
+        "handle": 12,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 607,
+              "bytes": 50328
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "OUTPUT",
+        "handle": 27,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "8.8.8.8"
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "protocol"
+                }
+              },
+              "right": "icmp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 352,
+              "bytes": 32384
+            }
+          },
+          {
+            "drop": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "INPUT",
+        "handle": 16,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 143,
+              "bytes": 8756
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-PROXY-FIREWALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "INPUT",
+        "handle": 9,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 128460,
+              "bytes": 106801667
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-NODEPORTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "INPUT",
+        "handle": 5,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 143,
+              "bytes": 8756
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-EXTERNAL-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 18,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-PROXY-FIREWALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 14,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-FORWARD"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 11,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 7,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-EXTERNAL-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-SERVICES",
+        "handle": 19,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "tcp"
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "10.96.1.191"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "tcp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "REJECT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-SERVICES",
+        "handle": 20,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "udp"
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "10.96.0.10"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "udp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "REJECT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-SERVICES",
+        "handle": 21,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "tcp"
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "10.96.0.10"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "tcp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "REJECT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-SERVICES",
+        "handle": 22,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "tcp"
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "10.96.0.10"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "tcp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "REJECT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-FORWARD",
+        "handle": 23,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "drop": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-FORWARD",
+        "handle": 24,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "mark"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "accept": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "filter",
+        "chain": "KUBE-FORWARD",
+        "handle": 25,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "accept": null
+          }
+        ]
+      }
+    },
+    {
+      "table": {
+        "family": "ip6",
+        "name": "filter",
+        "handle": 32
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "KUBE-EXTERNAL-SERVICES",
+        "handle": 1
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "INPUT",
+        "handle": 2,
+        "type": "filter",
+        "hook": "input",
+        "prio": 0,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "FORWARD",
+        "handle": 4,
+        "type": "filter",
+        "hook": "forward",
+        "prio": 0,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "KUBE-NODEPORTS",
+        "handle": 6
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "KUBE-SERVICES",
+        "handle": 8
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "OUTPUT",
+        "handle": 10,
+        "type": "filter",
+        "hook": "output",
+        "prio": 0,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "KUBE-FORWARD",
+        "handle": 12
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "KUBE-PROXY-FIREWALL",
+        "handle": 14
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "filter",
+        "name": "KUBE-PROXY-CANARY",
+        "handle": 21
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "INPUT",
+        "handle": 15,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-PROXY-FIREWALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "INPUT",
+        "handle": 7,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 586,
+              "bytes": 752667
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-NODEPORTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "INPUT",
+        "handle": 3,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-EXTERNAL-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 17,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-PROXY-FIREWALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 13,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-FORWARD"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 9,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "FORWARD",
+        "handle": 5,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-EXTERNAL-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "OUTPUT",
+        "handle": 16,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-PROXY-FIREWALL"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "OUTPUT",
+        "handle": 11,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "KUBE-FORWARD",
+        "handle": 18,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "drop": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "KUBE-FORWARD",
+        "handle": 19,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "mark"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "accept": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "filter",
+        "chain": "KUBE-FORWARD",
+        "handle": 20,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "conntrack"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "accept": null
+          }
+        ]
+      }
+    },
+    {
+      "table": {
+        "family": "ip6",
+        "name": "nat",
+        "handle": 33
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "KUBE-SERVICES",
+        "handle": 1
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "OUTPUT",
+        "handle": 2,
+        "type": "nat",
+        "hook": "output",
+        "prio": -100,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "PREROUTING",
+        "handle": 4,
+        "type": "nat",
+        "hook": "prerouting",
+        "prio": -100,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "KUBE-POSTROUTING",
+        "handle": 6
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "POSTROUTING",
+        "handle": 7,
+        "type": "nat",
+        "hook": "postrouting",
+        "prio": 100,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "KUBE-NODEPORTS",
+        "handle": 9
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "KUBE-MARK-MASQ",
+        "handle": 10
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "nat",
+        "name": "KUBE-PROXY-CANARY",
+        "handle": 16
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "KUBE-SERVICES",
+        "handle": 15,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "addrtype"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-NODEPORTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "OUTPUT",
+        "handle": 3,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "PREROUTING",
+        "handle": 5,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "KUBE-POSTROUTING",
+        "handle": 11,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "mark"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "return": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "KUBE-POSTROUTING",
+        "handle": 12,
+        "expr": [
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "MARK"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "KUBE-POSTROUTING",
+        "handle": 13,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "MASQUERADE"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "POSTROUTING",
+        "handle": 8,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 2,
+              "bytes": 160
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-POSTROUTING"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip6",
+        "table": "nat",
+        "chain": "KUBE-MARK-MASQ",
+        "handle": 14,
+        "expr": [
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "MARK"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "table": {
+        "family": "ip",
+        "name": "nat",
+        "handle": 34
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-SERVICES",
+        "handle": 1
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "OUTPUT",
+        "handle": 2,
+        "type": "nat",
+        "hook": "output",
+        "prio": -100,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "PREROUTING",
+        "handle": 4,
+        "type": "nat",
+        "hook": "prerouting",
+        "prio": -100,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-POSTROUTING",
+        "handle": 6
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "POSTROUTING",
+        "handle": 7,
+        "type": "nat",
+        "hook": "postrouting",
+        "prio": 100,
+        "policy": "accept"
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-NODEPORTS",
+        "handle": 9
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-MARK-MASQ",
+        "handle": 10
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-SVC-NPX46M4PTMTKRN6Y",
+        "handle": 11
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-SEP-NBRH4D4H626CKEGP",
+        "handle": 12
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "nat",
+        "name": "KUBE-PROXY-CANARY",
+        "handle": 23
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-SERVICES",
+        "handle": 17,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "tcp"
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "10.96.0.1"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "tcp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SVC-NPX46M4PTMTKRN6Y"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-SERVICES",
+        "handle": 22,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "addrtype"
+            }
+          },
+          {
+            "counter": {
+              "packets": 136,
+              "bytes": 8328
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-NODEPORTS"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "OUTPUT",
+        "handle": 3,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 603,
+              "bytes": 50076
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "PREROUTING",
+        "handle": 5,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 0,
+              "bytes": 0
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SERVICES"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-POSTROUTING",
+        "handle": 13,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "mark"
+            }
+          },
+          {
+            "counter": {
+              "packets": 169,
+              "bytes": 10308
+            }
+          },
+          {
+            "return": null
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-POSTROUTING",
+        "handle": 14,
+        "expr": [
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "MARK"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-POSTROUTING",
+        "handle": 15,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "MASQUERADE"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "POSTROUTING",
+        "handle": 8,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 174,
+              "bytes": 10608
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-POSTROUTING"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-MARK-MASQ",
+        "handle": 16,
+        "expr": [
+          {
+            "counter": {
+              "packets": 10,
+              "bytes": 600
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "MARK"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-SVC-NPX46M4PTMTKRN6Y",
+        "handle": 18,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "tcp"
+            }
+          },
+          {
+            "match": {
+              "op": "!=",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "saddr"
+                }
+              },
+              "right": {
+                "prefix": {
+                  "addr": "100.64.0.0",
+                  "len": 10
+                }
+              }
+            }
+          },
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "daddr"
+                }
+              },
+              "right": "10.96.0.1"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "tcp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-MARK-MASQ"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-SVC-NPX46M4PTMTKRN6Y",
+        "handle": 19,
+        "expr": [
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-SEP-NBRH4D4H626CKEGP"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-SEP-NBRH4D4H626CKEGP",
+        "handle": 20,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "payload": {
+                  "protocol": "ip",
+                  "field": "saddr"
+                }
+              },
+              "right": "192.168.196.137"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "jump": {
+              "target": "KUBE-MARK-MASQ"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": {
+        "family": "ip",
+        "table": "nat",
+        "chain": "KUBE-SEP-NBRH4D4H626CKEGP",
+        "handle": 21,
+        "expr": [
+          {
+            "match": {
+              "op": "==",
+              "left": {
+                "meta": {
+                  "key": "l4proto"
+                }
+              },
+              "right": "tcp"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "comment"
+            }
+          },
+          {
+            "xt": {
+              "type": "match",
+              "name": "tcp"
+            }
+          },
+          {
+            "counter": {
+              "packets": 5,
+              "bytes": 300
+            }
+          },
+          {
+            "xt": {
+              "type": "target",
+              "name": "DNAT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "table": {
+        "family": "ip6",
+        "name": "mangle",
+        "handle": 35
+      }
+    },
+    {
+      "chain": {
+        "family": "ip6",
+        "table": "mangle",
+        "name": "KUBE-PROXY-CANARY",
+        "handle": 1
+      }
+    },
+    {
+      "table": {
+        "family": "ip",
+        "name": "mangle",
+        "handle": 36
+      }
+    },
+    {
+      "chain": {
+        "family": "ip",
+        "table": "mangle",
+        "name": "KUBE-PROXY-CANARY",
+        "handle": 1
+      }
+    },
+    {
+      "table": {
+        "family": "inet",
+        "name": "Retis_Table",
+        "handle": 40
+      }
+    },
+    {
+      "chain": {
+        "family": "inet",
+        "table": "Retis_Table",
+        "name": "Retis_Chain",
+        "handle": 1
+      }
+    },
+    {
+      "rule": {
+        "family": "inet",
+        "table": "Retis_Table",
+        "chain": "Retis_Chain",
+        "handle": 2,
+        "expr": [
+          {
+            "mangle": {
+              "key": {
+                "meta": {
+                  "key": "nftrace"
+                }
+              },
+              "value": 1
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

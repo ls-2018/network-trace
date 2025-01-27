@@ -44,7 +44,8 @@ type nftabletraceTraceInfo struct {
 	SrcMac      [6]uint8
 	DstMac      [6]uint8
 	IpProto     uint8
-	_           [3]byte
+	Process     [60]uint8
+	_           [7]byte
 }
 
 // loadNftabletrace returns the embedded CollectionSpec for nftabletrace.

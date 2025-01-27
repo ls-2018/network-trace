@@ -1,13 +1,5 @@
-/**
- * SPDX-License-Identifier: Dual BSD/GPL
- * Copyright 2023 Leon Hwang.
- */
 
-#include "vmlinux.h"
-
-#include "bpf/bpf_helpers.h"
-#include "bpf/bpf_tracing.h"
-#include "bpf/bpf_core_read.h"
+#include "bpf_all.h"
 
 extern int LINUX_KERNEL_VERSION __kconfig;
 
@@ -38,7 +30,7 @@ static const volatile struct config CONFIG = {
 #define cfg ((const volatile struct config *)&CONFIG)
 
 struct packet {
-    __u32 pid;
+    struct process_info process;
     __u32 peer_pid;
     __u32 len;
     __u32 flags;
@@ -134,7 +126,7 @@ static __always_inline void collect_data(void *ctx, struct packet *pkt, char *bu
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, pkt, sizeof(*pkt));
 }
 
-static __noinline int __usk_sendmsg(void *ctx, struct socket *sock, struct msghdr *msg, size_t len)
+static __noinline int usk_send_msg(void *ctx, struct socket *sock, struct msghdr *msg, size_t len)
 {
     struct unix_sock *usk, *peer;
     const struct iovec *iov;
@@ -160,18 +152,18 @@ static __noinline int __usk_sendmsg(void *ctx, struct socket *sock, struct msghd
     if (!__is_sock_path_matched(usk, path) && !__is_sock_path_matched(peer, path))
         return 0;
 
-    pkt->pid = pid;
-    bpf_get_current_comm(&pkt->comm, sizeof(pkt->comm));
+    struct process_info *p = &pkt->process;
+    fill_process_info(p);
+
     BPF_CORE_READ_INTO(&numbers, sock, sk, sk_peer_pid, numbers);
     pkt->peer_pid = numbers[0].nr;
 
     iter = &msg->msg_iter;
 
-    if (__is_kernel_ge_6_0_0() && BPF_CORE_READ(iter, iter_type) == ITER_UBUF) {
-        collect_data(ctx, pkt, BPF_CORE_READ(iter, ubuf), len);
-
-        return 0;
-    }
+    // if (__is_kernel_ge_6_0_0() && BPF_CORE_READ(iter, iter_type) == ITER_UBUF) {
+    //     collect_data(ctx, pkt, BPF_CORE_READ(iter, ubuf), len);
+    //     return 0;
+    // }
 
     if ((__is_kernel_ge_6_0_0() && (BPF_CORE_READ(iter, iter_type) != ITER_IOVEC || BPF_CORE_READ(iter, iov_offset) != 0)) || BPF_CORE_READ(iter, iov_offset) != 0) {
         pkt->len = len;
@@ -203,8 +195,13 @@ static __always_inline int __kprobe_unix_sendmsg(struct pt_regs *ctx)
     struct socket *sock = (void *)PT_REGS_PARM1(ctx);
     struct msghdr *msg = (void *)PT_REGS_PARM2(ctx);
     size_t len = PT_REGS_PARM3(ctx);
-    return __usk_sendmsg(ctx, sock, msg, len);
+    return usk_send_msg(ctx, sock, msg, len);
 }
+
+// 通过unix socket 进行进程间的通信
+// https://blog.csdn.net/youzhangjing_/article/details/134934808
+// https://cloud.tencent.com/developer/article/1963176
+// https://zhuanlan.zhihu.com/p/421805367
 
 SEC("kprobe/unix_stream_sendmsg")
 int kprobe__unix_stream_sendmsg(struct pt_regs *ctx) { return __kprobe_unix_sendmsg(ctx); }
@@ -213,9 +210,20 @@ SEC("kprobe/unix_dgram_sendmsg")
 int kprobe__unix_dgram_sendmsg(struct pt_regs *ctx) { return __kprobe_unix_sendmsg(ctx); }
 
 SEC("fentry/unix_stream_sendmsg")
-int BPF_PROG(fentry__unix_stream_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return __usk_sendmsg((void *)(long)ctx, sock, msg, len); }
+int BPF_PROG(fentry__unix_stream_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return usk_send_msg((void *)(long)ctx, sock, msg, len); }
 
 SEC("fentry/unix_dgram_sendmsg")
-int BPF_PROG(fentry__unix_dgram_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return __usk_sendmsg((void *)(long)ctx, sock, msg, len); }
+int BPF_PROG(fentry__unix_dgram_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return usk_send_msg((void *)(long)ctx, sock, msg, len); }
 
-char __license[] SEC("license") = "Dual BSD/GPL";
+//
+// SEC("kprobe/unix_stream_recvmsg")
+// int kprobe__unix_stream_sendmsg(struct pt_regs *ctx) { return 0; }
+//
+// SEC("kprobe/unix_dgram_sendmsg")
+// int kprobe__unix_dgram_sendmsg(struct pt_regs *ctx) { return 0; }
+//
+// SEC("fentry/unix_stream_recvmsg")
+// int BPF_PROG(fentry__unix_stream_recvmsg, struct socket *sock, struct msghdr *msg, size_t len) { return 0; }
+//
+// SEC("fentry/unix_dgram_sendmsg")
+// int BPF_PROG(fentry__unix_dgram_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return 0; }
