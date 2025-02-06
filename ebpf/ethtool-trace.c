@@ -73,7 +73,7 @@ static __always_inline u32 get_ethcmd(void *useraddr)
     return cmd;
 }
 
-static __always_inline int kp_dev_ethtool(void *ctx, struct net *net, struct ifreq *ifr, void *useraddr)
+static __always_inline int __kp_dev_ethtool(void *ctx, struct net *net, struct ifreq *ifr, void *useraddr)
 {
     struct event ev = {};
 
@@ -96,7 +96,7 @@ int kp_dev_ethtool(struct pt_regs *ctx)
     struct net *net = (typeof(net))(void *)(u64)PT_REGS_PARM1(ctx);
     struct ifreq *ifr = (typeof(ifr))(void *)(u64)PT_REGS_PARM2(ctx);
     void *useraddr = (typeof(useraddr))(void *)(u64)PT_REGS_PARM3(ctx);
-    return kp_dev_ethtool(ctx, net, ifr, useraddr);
+    return __kp_dev_ethtool(ctx, net, ifr, useraddr);
 }
 
 static __always_inline void __get_dev_name(struct event *ev, struct ethnl_req_info *req)

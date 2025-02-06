@@ -21,8 +21,8 @@ static __always_inline void fill_trace_pkt_info(struct trace_info *trace, const 
         struct ethhdr *eth = (struct ethhdr *)skb_mac_header(skb);
         if ((void *)eth + sizeof(*eth) > end)
             return;
-        bpf_probe_read_kernel(trace->src_mac, sizeof(trace->src_mac), BPF_CORE_READ(eth, h_source));
-        bpf_probe_read_kernel(trace->dst_mac, sizeof(trace->dst_mac), BPF_CORE_READ(eth, h_dest));
+        bpf_probe_read_kernel(trace->ip_info.src_mac, sizeof(trace->ip_info.src_mac), BPF_CORE_READ(eth, h_source));
+        bpf_probe_read_kernel(trace->ip_info.dst_mac, sizeof(trace->ip_info.dst_mac), BPF_CORE_READ(eth, h_dest));
     }
 
     if (trace->family == NFPROTO_IPV4) {
@@ -30,58 +30,59 @@ static __always_inline void fill_trace_pkt_info(struct trace_info *trace, const 
         if ((void *)iph + sizeof(*iph) > end)
             return;
 
-        trace->ip_proto = BPF_CORE_READ(iph, protocol);
-        trace->src_ip = bpf_ntohl(BPF_CORE_READ(iph, saddr));
-        trace->dst_ip = bpf_ntohl(BPF_CORE_READ(iph, daddr));
+        trace->ip_info.ip_proto = BPF_CORE_READ(iph, protocol);
+        trace->ip_info.src_ip4 = bpf_ntohl(BPF_CORE_READ(iph, saddr));
+        trace->ip_info.dst_ip4 = bpf_ntohl(BPF_CORE_READ(iph, daddr));
         trace->len = bpf_ntohs(BPF_CORE_READ(iph, tot_len));
 
-        if (trace->ip_proto == IPPROTO_TCP) {
+        if (trace->ip_info.ip_proto == IPPROTO_TCP) {
             struct tcphdr *tcph = (void *)((void *)iph + (BPF_CORE_READ_BITFIELD_PROBED(iph, ihl) * 4));
             if ((void *)tcph + sizeof(*tcph) > end)
                 return;
 
-            trace->src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
-            trace->dst_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
-        } else if (trace->ip_proto == IPPROTO_UDP) {
+            trace->ip_info.src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
+            trace->ip_info.dst_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
+        } else if (trace->ip_info.ip_proto == IPPROTO_UDP) {
             struct udphdr *udph = (void *)((void *)iph + (BPF_CORE_READ_BITFIELD_PROBED(iph, ihl) * 4));
             if ((void *)udph + sizeof(*udph) > end)
                 return;
 
-            trace->src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
-            trace->dst_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
+            trace->ip_info.src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
+            trace->ip_info.dst_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
         }
         const struct ip_tuple tuple = {
-            .src_port = trace->src_port,
-            .dst_port = trace->dst_port,
-            .src_ip = trace->src_ip,
-            .dst_ip = trace->dst_ip,
+            .src_port = trace->ip_info.src_port,
+            .dst_port = trace->ip_info.dst_port,
+            .src_ip4 = trace->ip_info.src_ip4,
+            .dst_ip4 = trace->ip_info.dst_ip4,
             .ip_proto = trace->family,
         };
-        // bpf_printk("tuple_hash: %x, trace_id: %x, skb_hash: %x", hash_from_tuple_v4(&tuple), get_trace_id(skb), BPF_CORE_READ(skb, hash));
+        // bpf_printk("tuple_hash: %x, trace_id: %x, skb_hash: %x", hash_from_tuple_v4(&tuple), get_trace_id(skb),
+        // BPF_CORE_READ(skb, hash));
     } else if (trace->family == NFPROTO_IPV6) {
         struct ipv6hdr *ip6h = (struct ipv6hdr *)skb_network_header(skb);
         if ((void *)ip6h + sizeof(*ip6h) > end)
             return;
 
-        trace->ip_proto = BPF_CORE_READ(ip6h, nexthdr);
-        trace->src_ip6 = BPF_CORE_READ(ip6h, saddr);
-        trace->dst_ip6 = BPF_CORE_READ(ip6h, daddr);
+        trace->ip_info.ip_proto = BPF_CORE_READ(ip6h, nexthdr);
+        trace->ip_info.src_ip6 = BPF_CORE_READ(ip6h, saddr);
+        trace->ip_info.dst_ip6 = BPF_CORE_READ(ip6h, daddr);
         trace->len = bpf_ntohs(BPF_CORE_READ(ip6h, payload_len));
 
-        if (trace->ip_proto == IPPROTO_TCP) {
+        if (trace->ip_info.ip_proto == IPPROTO_TCP) {
             struct tcphdr *tcph = (void *)((void *)ip6h + sizeof(*ip6h));
             if ((void *)tcph + sizeof(*tcph) > end)
                 return;
 
-            trace->src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
-            trace->dst_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
-        } else if (trace->ip_proto == IPPROTO_UDP) {
+            trace->ip_info.src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
+            trace->ip_info.dst_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
+        } else if (trace->ip_info.ip_proto == IPPROTO_UDP) {
             struct udphdr *udph = (void *)((void *)ip6h + sizeof(*ip6h));
             if ((void *)udph + sizeof(*udph) > end)
                 return;
 
-            trace->src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
-            trace->dst_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
+            trace->ip_info.src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
+            trace->ip_info.dst_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
         }
     }
 }

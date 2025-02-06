@@ -3,7 +3,7 @@ package tcp
 import (
 	"bytes"
 	"context"
-	"ebpf-nftrace/pkg/errx"
+	"ebpf-nftrace/utils/errx"
 	"encoding/binary"
 	"errors"
 	"log"
@@ -18,7 +18,7 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types tcpconn ./../../ebpf/tcp-connecting.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types tcpconn ./../../ebpf/tcp-connecting.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 
 func Run() {
 	if err := rlimit.RemoveMemlock(); err != nil {

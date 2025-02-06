@@ -1,5 +1,4 @@
 #include "bpf_all.h"
-#include "btf/nf_tables.h"
 #include "fill_trace.h"
 #include "counters.h"
 

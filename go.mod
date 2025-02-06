@@ -2,8 +2,6 @@ module ebpf-nftrace
 
 go 1.23.0
 
-toolchain go1.23.5
-
 require (
 	github.com/Asphaltt/mybtf v0.0.0-20241221150148-0614d9aca88b
 	github.com/asavie/xdp v0.3.3

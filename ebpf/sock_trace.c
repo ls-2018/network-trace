@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Copyright Leon Hwang */
 
-#include "bpf_all.h"
+#include "vmlinux.h"
+#include "bpf/bpf_helpers.h"
+#include "bpf/bpf_core_read.h"
+#include "bpf/bpf_tracing.h"
+
+#include "socket.h"
 
 struct sk_meta {
     __be64 addrs;
@@ -39,7 +44,7 @@ struct socket_info {
 } __attribute__((packed));
 
 struct event {
-    struct process_info process;
+    u32 pid;
     u8 comm[16];
     u32 cpu;
     u64 addr;
@@ -52,7 +57,7 @@ struct event {
 
 #define __sizeof_event (sizeof(struct event))
 
-#define MAX_QUEUE_ENTRIES 1024 * 1024
+#define MAX_QUEUE_ENTRIES 1024*1024
 
 struct {
     __uint(type, BPF_MAP_TYPE_QUEUE);
@@ -86,21 +91,24 @@ static volatile const struct config CFG;
 
 #define MAX_STACK_DEPTH 50
 struct {
-    __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-    __uint(max_entries, 256);
-    __uint(key_size, sizeof(u32));
-    __uint(value_size, MAX_STACK_DEPTH * sizeof(u64));
+	__uint(type, BPF_MAP_TYPE_STACK_TRACE);
+	__uint(max_entries, 256);
+	__uint(key_size, sizeof(u32));
+	__uint(value_size, MAX_STACK_DEPTH * sizeof(u64));
 } print_stack_map SEC(".maps");
 
-static __always_inline u32 get_netns(struct sock *sk) { return BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum); }
+static __always_inline u32
+get_netns(struct sock *sk) {
+    return BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
+}
 
-static __always_inline bool filter_meta(struct sock *sk)
-{
+static __always_inline bool
+filter_meta(struct sock *sk) {
     u16 protocol;
     u16 family;
 
     if (cfg->netns && get_netns(sk) != cfg->netns)
-        return false;
+            return false;
 
     if (cfg->mark && BPF_CORE_READ(sk, sk_mark) != cfg->mark)
         return false;
@@ -115,14 +123,16 @@ static __always_inline bool filter_meta(struct sock *sk)
         if (cfg->protocol && protocol != cfg->protocol)
             return false;
 
-        if (cfg->addr && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr) && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_daddr))
+        if (cfg->addr && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr) &&
+            cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_daddr))
             return false;
 
         if (cfg->port) {
             if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP)
                 return false;
 
-            if (cfg->port_le != BPF_CORE_READ(sk, __sk_common.skc_num) && cfg->port_be != BPF_CORE_READ(sk, __sk_common.skc_dport))
+            if (cfg->port_le != BPF_CORE_READ(sk, __sk_common.skc_num) &&
+                cfg->port_be != BPF_CORE_READ(sk, __sk_common.skc_dport))
                 return false;
         }
     }
@@ -130,8 +140,8 @@ static __always_inline bool filter_meta(struct sock *sk)
     return true;
 }
 
-static __always_inline bool filter(struct sock *sk)
-{
+static __always_inline bool
+filter(struct sock *sk) {
     if (cfg->pid) {
         u32 pid = bpf_get_current_pid_tgid() >> 32;
         if (pid != cfg->pid)
@@ -141,8 +151,8 @@ static __always_inline bool filter(struct sock *sk)
     return filter_meta(sk);
 }
 
-static __always_inline void set_meta(struct sock *sk, struct sk_meta *meta)
-{
+static __always_inline void
+set_meta(struct sock *sk, struct sk_meta *meta) {
     meta->addrs = BPF_CORE_READ(sk, __sk_common.skc_addrpair);
     meta->dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
     meta->port_num = BPF_CORE_READ(sk, __sk_common.skc_num);
@@ -155,30 +165,30 @@ struct __skc_reuseport {
     union {
         unsigned char one_byte;
         struct {
-            unsigned char skc_reuse : 4;
-            unsigned char skc_reuseport : 1;
-            unsigned char skc_ipv6only : 1;
-            unsigned char skc_net_refcnt : 1;
+            unsigned char		skc_reuse:4;
+            unsigned char		skc_reuseport:1;
+            unsigned char		skc_ipv6only:1;
+            unsigned char		skc_net_refcnt:1;
         };
     };
 };
 
-static __always_inline u8 probe_skc_reuseport(struct sock *sk)
-{
+static __always_inline u8
+probe_skc_reuseport(struct sock *sk) {
     struct __skc_reuseport reuseport;
-    bpf_probe_read_kernel(&reuseport, sizeof(reuseport), (void *)(&sk->__sk_common.skc_state) + 1);
+    bpf_probe_read_kernel(&reuseport, sizeof(reuseport), (void *) (&sk->__sk_common.skc_state) + 1);
     return reuseport.skc_reuseport;
 }
 
-static __always_inline void set_sk_common(struct sock *sk, struct sk_common *skc)
-{
+static __always_inline void
+set_sk_common(struct sock *sk, struct sk_common *skc) {
     skc->state = BPF_CORE_READ(sk, __sk_common.skc_state);
     skc->reuse_port = probe_skc_reuseport(sk);
     skc->bound_ifindex = BPF_CORE_READ(sk, __sk_common.skc_bound_dev_if);
 }
 
-static __always_inline void set_sk_info(struct sock *sk, struct sk_info *sk_info)
-{
+static __always_inline void
+set_sk_info(struct sock *sk, struct sk_info *sk_info) {
     sk_info->rx_dst_ifindex = BPF_CORE_READ(sk, sk_rx_dst_ifindex);
     sk_info->backlog_len = BPF_CORE_READ(sk, sk_backlog.len);
     sk_info->rcv_buff = BPF_CORE_READ(sk, sk_rcvbuf);
@@ -188,8 +198,8 @@ static __always_inline void set_sk_info(struct sock *sk, struct sk_info *sk_info
     sk_info->type = BPF_CORE_READ(sk, sk_type);
 }
 
-static __always_inline void set_sock_info(struct sock *sk, struct socket_info *sock_info)
-{
+static __always_inline void
+set_sock_info(struct sock *sk, struct socket_info *sock_info) {
     struct socket *sock = BPF_CORE_READ(sk, sk_socket);
     if (!sock)
         return;
@@ -200,8 +210,8 @@ static __always_inline void set_sock_info(struct sock *sk, struct socket_info *s
     sock_info->file_inode = BPF_CORE_READ(sock, file, f_inode, i_ino);
 }
 
-static __always_inline void set_output(void *ctx, struct sock *sk, struct event *event)
-{
+static __always_inline void
+set_output(void *ctx,struct sock *sk, struct event *event) {
     if (cfg->output_sock_common)
         set_sk_common(sk, &event->skc);
 
@@ -212,28 +222,29 @@ static __always_inline void set_output(void *ctx, struct sock *sk, struct event 
         set_sock_info(sk, &event->sock);
 
     if (cfg->output_stack)
-        event->print_stack_id = bpf_get_stackid(ctx, &print_stack_map, BPF_F_FAST_STACK_CMP);
+        event->print_stack_id = bpf_get_stackid(ctx, &print_stack_map,
+                                                BPF_F_FAST_STACK_CMP);
 }
 
-static __noinline bool handle_everything(void *ctx, struct sock *sk, struct event *event)
-{
+static __noinline bool
+handle_everything(void *ctx, struct sock *sk, struct event *event) {
     if (cfg->is_set) {
         if (!filter(sk))
             return false;
 
         set_output(ctx, sk, event);
     }
-    struct process_info *p = &event->process;
-    fill_process_info(p);
 
+    event->pid = bpf_get_current_pid_tgid() >> 32;
+    bpf_get_current_comm(&event->comm, sizeof(event->comm));
     event->cpu = bpf_get_smp_processor_id();
     set_meta(sk, &event->meta);
 
     return true;
 }
 
-static __always_inline int kprobe_sk(struct sock *sk, struct pt_regs *ctx, bool has_get_func_ip)
-{
+static __always_inline int
+kprobe_sk(struct sock *sk, struct pt_regs *ctx, bool has_get_func_ip) {
     struct event event = {};
 
     if (!handle_everything(ctx, sk, &event))
@@ -253,13 +264,12 @@ static __always_inline int kprobe_sk(struct sock *sk, struct pt_regs *ctx, bool 
 #define SOCKTRACE_GET_FUNC_IP false
 #endif /* HAS_KPROBE_MULTI */
 
-#define SOCKTRACE_KPROBE(X)                                                                                                                                                                                                                                                                                                                                            \
-    SEC(SOCKTRACE_KPROBE_TYPE "/sk-" #X)                                                                                                                                                                                                                                                                                                                               \
-    int kprobe_sk_##X(struct pt_regs *ctx)                                                                                                                                                                                                                                                                                                                             \
-    {                                                                                                                                                                                                                                                                                                                                                                  \
-        struct sock *sk = (struct sock *)PT_REGS_PARM##X(ctx);                                                                                                                                                                                                                                                                                                         \
-        return kprobe_sk(sk, ctx, SOCKTRACE_GET_FUNC_IP);                                                                                                                                                                                                                                                                                                              \
-    }
+#define SOCKTRACE_KPROBE(X)                                 \
+  SEC(SOCKTRACE_KPROBE_TYPE "/sk-" #X)                      \
+  int kprobe_sk_##X(struct pt_regs *ctx) {                  \
+    struct sock *sk = (struct sock *) PT_REGS_PARM##X(ctx); \
+    return kprobe_sk(sk, ctx, SOCKTRACE_GET_FUNC_IP);       \
+  }
 
 SOCKTRACE_KPROBE(1)
 SOCKTRACE_KPROBE(2)

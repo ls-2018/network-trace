@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"ebpf-nftrace/pkg/iptables"
 	_ "ebpf-nftrace/pkg/iptables"
-	"ebpf-nftrace/pkg/nft"
-	"ebpf-nftrace/pkg/nftables"
+	"ebpf-nftrace/pkg/xdp"
+	"ebpf-nftrace/utils/nft"
 	"flag"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/pkg/errors"
@@ -24,8 +23,8 @@ func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
 		panic(errors.WithMessage(err, "failed to remove memory limit for process"))
 	}
-	go nftables.Run(ctx)
+	//go nftables.Run(ctx)
 	//iptables.Run(ctx)
-
+	go xdp.Run(ctx)
 	<-ctx.Done()
 }

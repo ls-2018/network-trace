@@ -33,19 +33,25 @@ type nftabletraceTraceInfo struct {
 	OifType     uint16
 	IifName     [16]uint8
 	OifName     [16]uint8
-	SrcPort     uint16
-	DstPort     uint16
-	SrcIp       uint32
-	DstIp       uint32
-	SrcIp6      struct{ In6U struct{ U6Addr8 [16]uint8 } }
-	DstIp6      struct{ In6U struct{ U6Addr8 [16]uint8 } }
-	Time        uint64
-	Counter     uint64
-	SrcMac      [6]uint8
-	DstMac      [6]uint8
-	IpProto     uint8
-	Process     [60]uint8
-	_           [7]byte
+	IpInfo      struct {
+		SrcPort uint16
+		DstPort uint16
+		SrcIp4  uint32
+		DstIp4  uint32
+		SrcIp6  struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		DstIp6  struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		SrcMac  [6]uint8
+		DstMac  [6]uint8
+		IpProto uint8
+		_       [3]byte
+	}
+	Time    uint64
+	Counter uint64
+	Process struct {
+		Name [64]int8
+		Pid  uint32
+	}
+	_ [4]byte
 }
 
 // loadNftabletrace returns the embedded CollectionSpec for nftabletrace.

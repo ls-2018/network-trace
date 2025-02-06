@@ -3,18 +3,18 @@ KERNEL_MAJOR := $(shell echo $(KERNEL_VERSION) | cut -d. -f1)
 KERNEL_MINOR := $(shell echo $(KERNEL_VERSION) | cut -d. -f2)
 KERNEL_PATCH := $(shell echo $(KERNEL_VERSION) | cut -d. -f3 | cut -d- -f1)
 
-JSON_CONTENT := $(shell cat ./utils/add.json | jq -c .)
-JSON_DELETE :=  $(shell cat ./utils/delete.json | jq -c .)
+JSON_CONTENT := $(shell cat ./hack/add.json | jq -c .)
+JSON_DELETE :=  $(shell cat ./hack/delete.json | jq -c .)
 SRC_FILES := $(shell find ./ebpf -maxdepth 1 -type f -name "*.c" -exec readlink -f {} \;)
 
 all: clean tidy build_kernel
 	#bpftool btf dump file /sys/kernel/btf/vmlinux   format c > ./ebpf/headers/vmlinux.h
 	#bpftool btf dump file /sys/kernel/btf/nf_tables format c > ./ebpf/headers/btf/nf_tables.h
 	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(${KERNEL_MAJOR}, ${KERNEL_MINOR}, ${KERNEL_PATCH})" > ebpf/headers/version.h
-	#nft flush ruleset
-	#iptables -F
-	iptables -D OUTPUT -d 8.8.8.8 -p icmp -j DROP
-	iptables -A OUTPUT -d 8.8.8.8 -p icmp -j DROP
+	nft flush ruleset
+	iptables -F
+	#iptables -D OUTPUT -d 8.8.8.8 -p icmp -j DROP
+	#iptables -A OUTPUT -d 8.8.8.8 -p icmp -j DROP
 	go generate ./...
 	go run ./cmd/ebpf -ko ./bin/src/iptables-trace.ko
 

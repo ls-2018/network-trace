@@ -190,8 +190,10 @@ static __always_inline struct sock *sock_from_file(__u64 ptr)
 //
 //     struct sock *sk = sock_from_file(fd_info->file);
 //     if (BPF_CORE_READ(sk, __sk_common.skc_family) == AF_INET) {
-//         bpf_printk("fd-socket: connect fd=%d sock=0x%016llx retval=%d\n", fd, (__u64)sock_from_file(fd_info->file), retval);
-//         bpf_printk("fd-socket: connect lport=%d rport=%d laddr=%pI4 raddr=%pI4\n", BPF_CORE_READ(sk, __sk_common.skc_num), bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)), &sk->__sk_common.skc_rcv_saddr, &sk->__sk_common.skc_daddr);
+//         bpf_printk("fd-socket: connect fd=%d sock=0x%016llx retval=%d\n", fd, (__u64)sock_from_file(fd_info->file),
+//         retval); bpf_printk("fd-socket: connect lport=%d rport=%d laddr=%pI4 raddr=%pI4\n", BPF_CORE_READ(sk,
+//         __sk_common.skc_num), bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)), &sk->__sk_common.skc_rcv_saddr,
+//         &sk->__sk_common.skc_daddr);
 //     }
 //     return BPF_OK;
 // }
@@ -244,7 +246,8 @@ int BPF_PROG(fentry___sys_accept4, int fd)
 }
 
 // SEC("fexit/do_accept")
-// int BPF_PROG(fexit_do_accept, struct file *file, struct proto_accept_arg *arg, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags, struct file *newfile)
+// int BPF_PROG(fexit_do_accept, struct file *file, struct proto_accept_arg *arg, struct sockaddr *upeer_sockaddr, int
+// *upeer_addrlen, int flags, struct file *newfile)
 //{
 //     struct tcp_fd_info *fd_info;
 //

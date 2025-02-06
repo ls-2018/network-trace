@@ -2,6 +2,7 @@
 #define __NFTRACE_H__
 
 #include "version.h"
+#include "btf/nf_tables.h"
 
 struct nft_rule {
     //    struct list_head list;

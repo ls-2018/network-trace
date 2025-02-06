@@ -1,0 +1,3 @@
+[submodule "3rd/training"]
+	path = 3rd/training
+	url = https://github.com/chengyli/training.git

@@ -13,7 +13,7 @@ import (
 	"unsafe"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -cflags="-Wunused-variable" -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 
 func Run(ctx context.Context) {
 	for _, module := range nftrace.RequiredKernelModules {
@@ -29,12 +29,11 @@ func Run(ctx context.Context) {
 	objs := nftabletraceObjects{}
 	if err := loadNftabletraceObjects(&objs, nil); err != nil {
 		var ve *ebpf.VerifierError
-		log.Fatalf("failed to load bpf objects: %v", err)
+		log.Printf("failed to load bpf objects: %v", err)
 		if errors.As(err, &ve) {
 			log.Fatalf("Failed to load bpf obj: %v\n%+v", err, ve)
 		}
 		log.Fatalf("Failed to load bpf obj: %v", err)
-
 	}
 	kp, err := link.Kprobe("__nft_trace_packet", objs.KprobeNftTracePacket, nil)
 	if err != nil {

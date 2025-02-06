@@ -1,5 +1,3 @@
-
-
 #ifndef __LIB_XDP_TC_H_
 #define __LIB_XDP_TC_H_
 
@@ -52,7 +50,7 @@ static __always_inline void handle_new_connection(struct pt_regs *ctx, struct so
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &ev, sizeof(ev));
 }
 
-static __always_inline void handle_xdp(struct xdp_md *xdp, enum probing_type type, int cpu)
+static __always_inline void __handle_xdp(struct xdp_md *xdp, enum probing_type type, int cpu)
 {
     void *data_end = ctx_ptr(xdp, data_end);
     void *data = ctx_ptr(xdp, data);

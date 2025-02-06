@@ -64512,10 +64512,11 @@ struct tcphdr {
 struct iphdr {
     __u8 ihl : 4;
     __u8 version : 4;
-    __u8 tos;
-    __be16 tot_len;
-    __be16 id;
-    __be16 frag_off;
+    __u8 tos;        // 数据包的优先级和延迟要求
+    __be16 tot_len;  // 是整个数据包的长度（包括 IP 头部和数据部分），单位是字节。它是一个 16
+                     // 位字段，采用网络字节序（大端序），
+    __be16 id;       // 是数据包的标识符，通常用于数据包的分片
+    __be16 frag_off; // 用于表示数据包是否被分片以及分片的位置
     __u8 ttl;
     __u8 protocol;
     __sum16 check;

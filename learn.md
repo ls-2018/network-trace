@@ -80,16 +80,6 @@ err = spec.RewriteConstants(map[string]interface{}{
 ```
 
 
-```xdp
-
-link.AttachXDP(link.XDPOptions{
-    Program:   obj.XdpFn,
-    Interface: ifi.Attrs().Index,
-    Flags:     link.XDPGenericMode,
-})
-```
-
-
 ```metadata
 
 __u32 *val;
