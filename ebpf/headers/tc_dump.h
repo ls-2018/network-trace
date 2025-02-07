@@ -30,7 +30,9 @@ typedef struct event {
     dir_t direction;
 
     u16 total_len;
-#define DATA_SIZE (sizeof(struct ethhdr) + sizeof(struct vlan_hdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(struct vxlan_hdr) + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr))
+#define DATA_SIZE                                                                                                      \
+    (sizeof(struct ethhdr) + sizeof(struct vlan_hdr) + sizeof(struct iphdr) + sizeof(struct udphdr)                    \
+        + sizeof(struct vxlan_hdr) + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr))
     u8 data[DATA_SIZE];
 #undef DATA_SIZE
 } __attribute__((packed)) event_t;
@@ -58,7 +60,10 @@ static __always_inline bool filter_meta(struct __sk_buff *skb, config_t *cfg)
     return true;
 }
 
-static __noinline bool filter_pcap_ebpf_l2(void *_skb, void *__skb, void *___skb, void *data, void *data_end) { return data != data_end && _skb == __skb && __skb == ___skb; }
+static __noinline bool filter_pcap_ebpf_l2(void *_skb, void *__skb, void *___skb, void *data, void *data_end)
+{
+    return data != data_end && _skb == __skb && __skb == ___skb;
+}
 
 static __always_inline bool filter_pcap_l2(struct __sk_buff *skb)
 {
@@ -91,7 +96,10 @@ static __always_inline bool filter_fentry(struct sk_buff *skb)
     return filter_pcap_ebpf_l2((void *)skb, (void *)skb, (void *)skb, data, data_end);
 }
 
-static __always_inline bool is_vlan_proto(__be16 proto) { return proto == bpf_htons(ETH_P_8021Q) || proto == bpf_htons(ETH_P_8021AD); }
+static __always_inline bool is_vlan_proto(__be16 proto)
+{
+    return proto == bpf_htons(ETH_P_8021Q) || proto == bpf_htons(ETH_P_8021AD);
+}
 
 static __always_inline bool is_ipv4_proto(__be16 proto) { return proto == bpf_htons(ETH_P_IP); }
 
@@ -124,34 +132,34 @@ static __always_inline void copy_headers(void *__skb, event_t *ev, bool is_tc)
     struct icmphdr *icmph;
     int var_off = 0, cpy_off = 0;
 
-#define __memcpy(hdr)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
-    do {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-        if (is_tc) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-            struct __sk_buff *skb = (struct __sk_buff *)(u64)__skb;                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-            if (bpf_skb_load_bytes_relative(skb, var_off, ev->data + cpy_off, sizeof(*hdr), BPF_HDR_START_MAC) != 0)                                                                                                                                                                                                                                                                                                                                                                                                           \
-                return;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-            hdr = (typeof(hdr))(ev->data + cpy_off);                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-            cpy_off += sizeof(*hdr);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-            ev->total_len = cpy_off;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-        } else {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-            struct sk_buff *skb = (struct sk_buff *)(u64)__skb;                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-            void *skb_head = BPF_CORE_READ(skb, head);                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            void *data = skb_head + BPF_CORE_READ(skb, mac_header);                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-            if (bpf_probe_read_kernel(ev->data + cpy_off, sizeof(*hdr), data + var_off) != 0)                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-                return;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-            hdr = (typeof(hdr))(ev->data + cpy_off);                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-            cpy_off += sizeof(*hdr);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-            ev->total_len = cpy_off;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-        }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
+#define __memcpy(hdr)                                                                                                  \
+    do {                                                                                                               \
+        if (is_tc) {                                                                                                   \
+            struct __sk_buff *skb = (struct __sk_buff *)(u64)__skb;                                                    \
+            if (bpf_skb_load_bytes_relative(skb, var_off, ev->data + cpy_off, sizeof(*hdr), BPF_HDR_START_MAC) != 0)   \
+                return;                                                                                                \
+                                                                                                                       \
+            hdr = (typeof(hdr))(ev->data + cpy_off);                                                                   \
+            cpy_off += sizeof(*hdr);                                                                                   \
+            ev->total_len = cpy_off;                                                                                   \
+        } else {                                                                                                       \
+            struct sk_buff *skb = (struct sk_buff *)(u64)__skb;                                                        \
+            void *skb_head = BPF_CORE_READ(skb, head);                                                                 \
+            void *data = skb_head + BPF_CORE_READ(skb, mac_header);                                                    \
+            if (bpf_probe_read_kernel(ev->data + cpy_off, sizeof(*hdr), data + var_off) != 0)                          \
+                return;                                                                                                \
+                                                                                                                       \
+            hdr = (typeof(hdr))(ev->data + cpy_off);                                                                   \
+            cpy_off += sizeof(*hdr);                                                                                   \
+            ev->total_len = cpy_off;                                                                                   \
+        }                                                                                                              \
     } while (0)
-#define memcpy_hdr(hdr)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-    __memcpy(hdr);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
+#define memcpy_hdr(hdr)                                                                                                \
+    __memcpy(hdr);                                                                                                     \
     var_off += sizeof(*hdr)
 
-#define memcpy_ip_hdr(hdr)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-    __memcpy(hdr);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
+#define memcpy_ip_hdr(hdr)                                                                                             \
+    __memcpy(hdr);                                                                                                     \
     var_off += (hdr->ihl * 4)
 
     memcpy_hdr(eth);

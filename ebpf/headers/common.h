@@ -21,8 +21,8 @@ struct process_info {
 } __attribute__((packed));
 
 // struct process_info *
-#define fill_process_info(p)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-    bpf_get_current_comm(&p->name, sizeof(p->name));                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
+#define fill_process_info(p)                                                                                           \
+    bpf_get_current_comm(&p->name, sizeof(p->name));                                                                   \
     p->pid = bpf_get_current_pid_tgid() >> 32;
 
 #endif

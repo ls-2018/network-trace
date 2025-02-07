@@ -145,12 +145,13 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 		}
 
 		log.Printf(
-			"new tcp connection: %s:%d %s %s:%d state: %s->%s family:%s proto:%s ns:%d type:%d",
+			"new tcp connection: %s:%d %s %s:%d state: %s->%s %s family:%s proto:%s ns:%d type:%d",
 			s, ev.Sport,
 			direction,
 			d, ev.Dport,
 			dump.SockState(ev.Oldstate).String(),
 			dump.SockState(ev.Newstate).String(),
+			dump.SockState(ev.State).String(),
 			dump.AddressFamily(ev.Family).String(),
 			dump.IpProto(ev.Protocol).String(),
 			ev.Netns,

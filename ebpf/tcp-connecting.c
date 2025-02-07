@@ -20,14 +20,14 @@ struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, struct five_key);
     __type(value, int);
-    __uint(max_entries, 1024);
+    __uint(max_entries, 1000000);
 } ingress SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, struct five_key);
     __type(value, int);
-    __uint(max_entries, 1024);
+    __uint(max_entries, 1000000);
 } egress SEC(".maps");
 
 struct {
@@ -67,7 +67,7 @@ struct event_t {
     __u32 daddr;
     s16 type;
     __u32 netns;
-
+    u8 state;
 } __attribute__((packed));
 
 enum {
@@ -114,10 +114,6 @@ static __noinline void copy_event_from_args(struct inet_sock_set_state_args *arg
 
 static __noinline void copy_event_from_sk(struct sock *sk, struct event_t *event, int *err)
 {
-    if (!sk) {
-        *err = ERR_FAILED;
-        return;
-    }
     event->saddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr));
     if (event->saddr <= 0) {
         *err = ERR_FAILED;
@@ -126,9 +122,11 @@ static __noinline void copy_event_from_sk(struct sock *sk, struct event_t *event
     event->daddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_daddr));
     event->sport = BPF_CORE_READ(sk, __sk_common.skc_num);
     event->dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
+    event->state = BPF_CORE_READ(sk, __sk_common.skc_state);
 }
 
-static __noinline void handle_new_connection(void *ctx, struct sock *sk, s16 type, struct inet_sock_set_state_args *args)
+static __noinline void handle_new_connection(
+    void *ctx, struct sock *sk, s16 type, struct inet_sock_set_state_args *args)
 {
     struct event_t *event;
     int _err = ERR_INIT;
@@ -228,18 +226,18 @@ int BPF_PROG(fentry___sys_connect, int fd)
     return BPF_OK;
 }
 
-// SEC("fentry/__sys_connect_file")
-// int BPF_PROG(fentry___sys_connect_file, struct file *file)
-//{
-//
-//     struct tcp_fd_info *fd_info = find_fd_info();
-//     if (!fd_info)
-//         return BPF_OK;
-//
-//     fd_info->file = (__u64)(void *)file;
-//
-//     return BPF_OK;
-// }
+SEC("fentry/__sys_connect_file")
+int BPF_PROG(fentry___sys_connect_file, struct file *file)
+{
+
+    struct tcp_fd_info *fd_info = find_fd_info();
+    if (!fd_info)
+        return BPF_OK;
+
+    fd_info->file = (__u64)(void *)file;
+
+    return BPF_OK;
+}
 
 SEC("fexit/__sys_connect")
 int BPF_PROG(fexit___sys_connect, int fd, struct sockaddr *uservaddr, int addrlen, int retval)
@@ -273,7 +271,8 @@ int BPF_PROG(fentry___sys_accept4, int fd)
 
 // 从已经建立的监听套接字队列中获取一个待处理的连接，并返回一个新的套接字描述符
 SEC("fexit/do_accept")
-int BPF_PROG(fexit_do_accept, struct file *file, struct proto_accept_arg *arg, struct sockaddr *upeer_sockaddr, int *upeer_addrlen, int flags, struct file *newfile)
+int BPF_PROG(fexit_do_accept, struct file *file, struct proto_accept_arg *arg, struct sockaddr *upeer_sockaddr,
+    int *upeer_addrlen, int flags, struct file *newfile)
 {
     struct tcp_fd_info *fd_info = find_fd_info();
     if (!fd_info)
@@ -306,17 +305,28 @@ int BPF_PROG(fexit___sys_accept4, int fd, struct sockaddr *uservaddr, int addrle
         return BPF_OK;
 
     handle_new_connection(NULL, sk, -4, NULL);
+    struct five_key key = { .sport = BPF_CORE_READ(sk, __sk_common.skc_num),
+        .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)),
+        .saddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr)),
+        .daddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_daddr)),
+        .family = BPF_CORE_READ(sk, __sk_common.skc_family) };
+
+    int state = TCP_SYN_RECV;
+    bpf_map_lookup_or_try_init(&ingress, &key, &state);
+
+    handle_new_connection(NULL, sk, -6, NULL);
+
     return BPF_OK;
 }
 
 // 开始建立连接,构建好包
-SEC("kprobe/tcp_connect")
-int k_tcp_connect(struct pt_regs *ctx)
-{
-    struct sock *sk = (typeof(sk))PT_REGS_PARM1(ctx);
-    handle_new_connection(ctx, sk, 3, NULL);
-    return 0;
-}
+// SEC("kprobe/tcp_connect")
+// int k_tcp_connect(struct pt_regs *ctx)
+//{
+//    struct sock *sk = (typeof(sk))PT_REGS_PARM1(ctx);
+//    handle_new_connection(ctx, sk, 3, NULL);
+//    return 0;
+//}
 
 // 接收到客户端的第三个握手ACK报文之后，在函数tcp_check_req中
 // 如果一切检查正常的话，使用回调syn_recv_sock处理创建子套接口，
@@ -331,11 +341,15 @@ int tp_inet_sock_set_state(struct inet_sock_set_state_args *args)
 
     handle_new_connection(NULL, sk, 0, args);
 
-    // if (args->newstate == TCP_CLOSE) {
-    //     struct five_key key = { .sport = BPF_CORE_READ(sk, __sk_common.skc_num), .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)), .saddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr)), .daddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_daddr)), .family = BPF_CORE_READ(sk, __sk_common.skc_family) };
-    //     bpf_map_delete_elem(&egress, &key);
-    //     bpf_map_delete_elem(&ingress, &key);
-    // }
+    if (args->newstate == TCP_CLOSE) {
+        struct five_key key = { .sport = BPF_CORE_READ(sk, __sk_common.skc_num),
+            .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)),
+            .saddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr)),
+            .daddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_daddr)),
+            .family = BPF_CORE_READ(sk, __sk_common.skc_family) };
+        bpf_map_delete_elem(&egress, &key);
+        bpf_map_delete_elem(&ingress, &key);
+    }
     return BPF_OK;
 }
 
@@ -349,8 +363,12 @@ int tp_inet_sock_set_state(struct inet_sock_set_state_args *args)
 SEC("fentry/tcp_v4_connect")
 int BPF_PROG(fexit_tcp_v4_connect, struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
-    struct five_key key = { .sport = BPF_CORE_READ(sk, __sk_common.skc_num), .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)), .saddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr)), .daddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_daddr)), .family = BPF_CORE_READ(sk, __sk_common.skc_family) };
-    int state = TCP_CLOSE;
+    struct five_key key = { .sport = BPF_CORE_READ(sk, __sk_common.skc_num),
+        .dport = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport)),
+        .saddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr)),
+        .daddr = bpf_ntohl(BPF_CORE_READ(sk, __sk_common.skc_daddr)),
+        .family = BPF_CORE_READ(sk, __sk_common.skc_family) };
+    int state = TCP_SYN_SENT;
     bpf_map_lookup_or_try_init(&egress, &key, &state);
     handle_new_connection(NULL, sk, 2, NULL);
 
@@ -359,7 +377,11 @@ int BPF_PROG(fexit_tcp_v4_connect, struct sock *sk, struct sockaddr *uaddr, int 
 
 // SEC("fexit/tcp_v4_do_rcv")
 // int BPF_PROG(fexit_tcp_v4_do_rcv, struct sock *sk, struct sk_buff *skb, int retval)
-// {
+//{
 //     handle_new_connection(NULL, sk, -5, NULL);
 //     return BPF_OK;
 // }
+
+// netstat -ntp
+// ss -tp
+// ss -t -u -a

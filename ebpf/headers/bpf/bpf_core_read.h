@@ -43,13 +43,17 @@ enum bpf_enum_value_kind {
 #define __CORE_RELO(src, field, info) __builtin_preserve_field_info((src)->field, BPF_FIELD_##info)
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define __CORE_BITFIELD_PROBE_READ(dst, src, fld) bpf_probe_read_kernel((void *)dst, __CORE_RELO(src, fld, BYTE_SIZE), (const void *)src + __CORE_RELO(src, fld, BYTE_OFFSET))
+#define __CORE_BITFIELD_PROBE_READ(dst, src, fld)                                                                      \
+    bpf_probe_read_kernel(                                                                                             \
+        (void *)dst, __CORE_RELO(src, fld, BYTE_SIZE), (const void *)src + __CORE_RELO(src, fld, BYTE_OFFSET))
 #else
 /* semantics of LSHIFT_64 assumes loading values into low-ordered bytes, so
  * for big-endian we need to adjust destination pointer accordingly, based on
  * field byte size
  */
-#define __CORE_BITFIELD_PROBE_READ(dst, src, fld) bpf_probe_read_kernel((void *)dst + (8 - __CORE_RELO(src, fld, BYTE_SIZE)), __CORE_RELO(src, fld, BYTE_SIZE), (const void *)src + __CORE_RELO(src, fld, BYTE_OFFSET))
+#define __CORE_BITFIELD_PROBE_READ(dst, src, fld)                                                                      \
+    bpf_probe_read_kernel((void *)dst + (8 - __CORE_RELO(src, fld, BYTE_SIZE)), __CORE_RELO(src, fld, BYTE_SIZE),      \
+        (const void *)src + __CORE_RELO(src, fld, BYTE_OFFSET))
 #endif
 
 /*
@@ -60,17 +64,17 @@ enum bpf_enum_value_kind {
  * integer storage. Macro functions as an expression and its return type is
  * bpf_probe_read_kernel()'s return value: 0, on success, <0 on error.
  */
-#define BPF_CORE_READ_BITFIELD_PROBED(s, field)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        unsigned long long val = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        __CORE_BITFIELD_PROBE_READ(&val, s, field);                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-        val <<= __CORE_RELO(s, field, LSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
-        if (__CORE_RELO(s, field, SIGNED))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-            val = ((long long)val) >> __CORE_RELO(s, field, RSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-        else                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            val = val >> __CORE_RELO(s, field, RSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-        val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+#define BPF_CORE_READ_BITFIELD_PROBED(s, field)                                                                        \
+    ({                                                                                                                 \
+        unsigned long long val = 0;                                                                                    \
+                                                                                                                       \
+        __CORE_BITFIELD_PROBE_READ(&val, s, field);                                                                    \
+        val <<= __CORE_RELO(s, field, LSHIFT_U64);                                                                     \
+        if (__CORE_RELO(s, field, SIGNED))                                                                             \
+            val = ((long long)val) >> __CORE_RELO(s, field, RSHIFT_U64);                                               \
+        else                                                                                                           \
+            val = val >> __CORE_RELO(s, field, RSHIFT_U64);                                                            \
+        val;                                                                                                           \
     })
 
 /*
@@ -79,91 +83,91 @@ enum bpf_enum_value_kind {
  * BPF program types that support such functionality (e.g., typed raw
  * tracepoints).
  */
-#define BPF_CORE_READ_BITFIELD(s, field)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        const void *p = (const void *)s + __CORE_RELO(s, field, BYTE_OFFSET);                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-        unsigned long long val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        /* This is a so-called barrier_var() operation that makes specified                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-         * variable "a black box" for optimizing compiler.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-         * It forces compiler to perform BYTE_OFFSET relocation on p and use                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-         * its calculated value in the switch below, instead of applying                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-         * the same relocation 4 times for each individual memory load.                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-         */                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-        asm volatile("" : "=r"(p) : "0"(p));                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        switch (__CORE_RELO(s, field, BYTE_SIZE)) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-            case 1:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(const unsigned char *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 2:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(const unsigned short *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                              \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 4:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(const unsigned int *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 8:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(const unsigned long long *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            default:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-                val = 0;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
-        val <<= __CORE_RELO(s, field, LSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
-        if (__CORE_RELO(s, field, SIGNED))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-            val = ((long long)val) >> __CORE_RELO(s, field, RSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-        else                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            val = val >> __CORE_RELO(s, field, RSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-        val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+#define BPF_CORE_READ_BITFIELD(s, field)                                                                               \
+    ({                                                                                                                 \
+        const void *p = (const void *)s + __CORE_RELO(s, field, BYTE_OFFSET);                                          \
+        unsigned long long val;                                                                                        \
+                                                                                                                       \
+        /* This is a so-called barrier_var() operation that makes specified                                            \
+         * variable "a black box" for optimizing compiler.                                                             \
+         * It forces compiler to perform BYTE_OFFSET relocation on p and use                                           \
+         * its calculated value in the switch below, instead of applying                                               \
+         * the same relocation 4 times for each individual memory load.                                                \
+         */                                                                                                            \
+        asm volatile("" : "=r"(p) : "0"(p));                                                                           \
+                                                                                                                       \
+        switch (__CORE_RELO(s, field, BYTE_SIZE)) {                                                                    \
+            case 1:                                                                                                    \
+                val = *(const unsigned char *)p;                                                                       \
+                break;                                                                                                 \
+            case 2:                                                                                                    \
+                val = *(const unsigned short *)p;                                                                      \
+                break;                                                                                                 \
+            case 4:                                                                                                    \
+                val = *(const unsigned int *)p;                                                                        \
+                break;                                                                                                 \
+            case 8:                                                                                                    \
+                val = *(const unsigned long long *)p;                                                                  \
+                break;                                                                                                 \
+            default:                                                                                                   \
+                val = 0;                                                                                               \
+                break;                                                                                                 \
+        }                                                                                                              \
+        val <<= __CORE_RELO(s, field, LSHIFT_U64);                                                                     \
+        if (__CORE_RELO(s, field, SIGNED))                                                                             \
+            val = ((long long)val) >> __CORE_RELO(s, field, RSHIFT_U64);                                               \
+        else                                                                                                           \
+            val = val >> __CORE_RELO(s, field, RSHIFT_U64);                                                            \
+        val;                                                                                                           \
     })
 
 /*
  * Write to a bitfield, identified by s->field.
  * This is the inverse of BPF_CORE_WRITE_BITFIELD().
  */
-#define BPF_CORE_WRITE_BITFIELD(s, field, new_val)                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        void *p = (void *)s + __CORE_RELO(s, field, BYTE_OFFSET);                                                                                                                                                                                                                                                                                                                                                                                                                                                              \
-        unsigned int byte_size = __CORE_RELO(s, field, BYTE_SIZE);                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
-        unsigned int lshift = __CORE_RELO(s, field, LSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        unsigned int rshift = __CORE_RELO(s, field, RSHIFT_U64);                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        unsigned long long mask, val, nval = new_val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
-        unsigned int rpad = rshift - lshift;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        asm volatile("" : "+r"(p));                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        switch (byte_size) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            case 1:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(unsigned char *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 2:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(unsigned short *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 4:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(unsigned int *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 8:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                val = *(unsigned long long *)p;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        mask = (~0ULL << rshift) >> lshift;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-        val = (val & ~mask) | ((nval << rpad) & mask);                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        switch (byte_size) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            case 1:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                *(unsigned char *)p = val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 2:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                *(unsigned short *)p = val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 4:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                *(unsigned int *)p = val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-            case 8:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-                *(unsigned long long *)p = val;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-                break;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
+#define BPF_CORE_WRITE_BITFIELD(s, field, new_val)                                                                     \
+    ({                                                                                                                 \
+        void *p = (void *)s + __CORE_RELO(s, field, BYTE_OFFSET);                                                      \
+        unsigned int byte_size = __CORE_RELO(s, field, BYTE_SIZE);                                                     \
+        unsigned int lshift = __CORE_RELO(s, field, LSHIFT_U64);                                                       \
+        unsigned int rshift = __CORE_RELO(s, field, RSHIFT_U64);                                                       \
+        unsigned long long mask, val, nval = new_val;                                                                  \
+        unsigned int rpad = rshift - lshift;                                                                           \
+                                                                                                                       \
+        asm volatile("" : "+r"(p));                                                                                    \
+                                                                                                                       \
+        switch (byte_size) {                                                                                           \
+            case 1:                                                                                                    \
+                val = *(unsigned char *)p;                                                                             \
+                break;                                                                                                 \
+            case 2:                                                                                                    \
+                val = *(unsigned short *)p;                                                                            \
+                break;                                                                                                 \
+            case 4:                                                                                                    \
+                val = *(unsigned int *)p;                                                                              \
+                break;                                                                                                 \
+            case 8:                                                                                                    \
+                val = *(unsigned long long *)p;                                                                        \
+                break;                                                                                                 \
+        }                                                                                                              \
+                                                                                                                       \
+        mask = (~0ULL << rshift) >> lshift;                                                                            \
+        val = (val & ~mask) | ((nval << rpad) & mask);                                                                 \
+                                                                                                                       \
+        switch (byte_size) {                                                                                           \
+            case 1:                                                                                                    \
+                *(unsigned char *)p = val;                                                                             \
+                break;                                                                                                 \
+            case 2:                                                                                                    \
+                *(unsigned short *)p = val;                                                                            \
+                break;                                                                                                 \
+            case 4:                                                                                                    \
+                *(unsigned int *)p = val;                                                                              \
+                break;                                                                                                 \
+            case 8:                                                                                                    \
+                *(unsigned long long *)p = val;                                                                        \
+                break;                                                                                                 \
+        }                                                                                                              \
     })
 
 /* Differentiator between compilers builtin implementations. This is a
@@ -175,10 +179,10 @@ enum bpf_enum_value_kind {
 #ifdef __clang__
 #define ___bpf_typeof(type) ((typeof(type) *)0)
 #else
-#define ___bpf_typeof1(type, NR)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        extern typeof(type) *___concat(bpf_type_tmp_, NR);                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-        ___concat(bpf_type_tmp_, NR);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
+#define ___bpf_typeof1(type, NR)                                                                                       \
+    ({                                                                                                                 \
+        extern typeof(type) *___concat(bpf_type_tmp_, NR);                                                             \
+        ___concat(bpf_type_tmp_, NR);                                                                                  \
     })
 #define ___bpf_typeof(type) ___bpf_typeof1(type, __COUNTER__)
 #endif
@@ -281,9 +285,11 @@ enum bpf_enum_value_kind {
  *    0, if no matching enum and/or enum value within that enum is found.
  */
 #ifdef __clang__
-#define bpf_core_enum_value_exists(enum_type, enum_value) __builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value, BPF_ENUMVAL_EXISTS)
+#define bpf_core_enum_value_exists(enum_type, enum_value)                                                              \
+    __builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value, BPF_ENUMVAL_EXISTS)
 #else
-#define bpf_core_enum_value_exists(enum_type, enum_value) __builtin_preserve_enum_value(___bpf_typeof(enum_type), enum_value, BPF_ENUMVAL_EXISTS)
+#define bpf_core_enum_value_exists(enum_type, enum_value)                                                              \
+    __builtin_preserve_enum_value(___bpf_typeof(enum_type), enum_value, BPF_ENUMVAL_EXISTS)
 #endif
 
 /*
@@ -295,9 +301,11 @@ enum bpf_enum_value_kind {
  *    0, if no matching enum and/or enum value within that enum is found.
  */
 #ifdef __clang__
-#define bpf_core_enum_value(enum_type, enum_value) __builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value, BPF_ENUMVAL_VALUE)
+#define bpf_core_enum_value(enum_type, enum_value)                                                                     \
+    __builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value, BPF_ENUMVAL_VALUE)
 #else
-#define bpf_core_enum_value(enum_type, enum_value) __builtin_preserve_enum_value(___bpf_typeof(enum_type), enum_value, BPF_ENUMVAL_VALUE)
+#define bpf_core_enum_value(enum_type, enum_value)                                                                     \
+    __builtin_preserve_enum_value(___bpf_typeof(enum_type), enum_value, BPF_ENUMVAL_VALUE)
 #endif
 
 /*
@@ -319,16 +327,19 @@ enum bpf_enum_value_kind {
 #define bpf_core_read(dst, sz, src) bpf_probe_read_kernel(dst, sz, (const void *)__builtin_preserve_access_index(src))
 
 /* NOTE: see comments for BPF_CORE_READ_USER() about the proper types use. */
-#define bpf_core_read_user(dst, sz, src) bpf_probe_read_user(dst, sz, (const void *)__builtin_preserve_access_index(src))
+#define bpf_core_read_user(dst, sz, src)                                                                               \
+    bpf_probe_read_user(dst, sz, (const void *)__builtin_preserve_access_index(src))
 /*
  * bpf_core_read_str() is a thin wrapper around bpf_probe_read_str()
  * additionally emitting BPF CO-RE field relocation for specified source
  * argument.
  */
-#define bpf_core_read_str(dst, sz, src) bpf_probe_read_kernel_str(dst, sz, (const void *)__builtin_preserve_access_index(src))
+#define bpf_core_read_str(dst, sz, src)                                                                                \
+    bpf_probe_read_kernel_str(dst, sz, (const void *)__builtin_preserve_access_index(src))
 
 /* NOTE: see comments for BPF_CORE_READ_USER() about the proper types use. */
-#define bpf_core_read_user_str(dst, sz, src) bpf_probe_read_user_str(dst, sz, (const void *)__builtin_preserve_access_index(src))
+#define bpf_core_read_user_str(dst, sz, src)                                                                           \
+    bpf_probe_read_user_str(dst, sz, (const void *)__builtin_preserve_access_index(src))
 
 extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
 
@@ -393,13 +404,14 @@ extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
 
 #define ___type(...) typeof(___arrow(__VA_ARGS__))
 
-#define ___read(read_fn, dst, src_type, src, accessor) read_fn((void *)(dst), sizeof(*(dst)), &((src_type)(src))->accessor)
+#define ___read(read_fn, dst, src_type, src, accessor)                                                                 \
+    read_fn((void *)(dst), sizeof(*(dst)), &((src_type)(src))->accessor)
 
 /* "recursively" read a sequence of inner pointers using local __t var */
 #define ___rd_first(fn, src, a) ___read(fn, &__t, ___type(src), src, a);
 #define ___rd_last(fn, ...) ___read(fn, &__t, ___type(___nolast(__VA_ARGS__)), __t, ___last(__VA_ARGS__));
-#define ___rd_p1(fn, ...)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      \
-    const void *__t;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
+#define ___rd_p1(fn, ...)                                                                                              \
+    const void *__t;                                                                                                   \
     ___rd_first(fn, __VA_ARGS__)
 #define ___rd_p2(fn, ...) ___rd_p1(fn, ___nolast(__VA_ARGS__)) ___rd_last(fn, __VA_ARGS__)
 #define ___rd_p3(fn, ...) ___rd_p2(fn, ___nolast(__VA_ARGS__)) ___rd_last(fn, __VA_ARGS__)
@@ -412,49 +424,59 @@ extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
 #define ___read_ptrs(fn, src, ...) ___apply(___rd_p, ___narg(__VA_ARGS__))(fn, src, __VA_ARGS__)
 
 #define ___core_read0(fn, fn_ptr, dst, src, a) ___read(fn, dst, ___type(src), src, a);
-#define ___core_readN(fn, fn_ptr, dst, src, ...) ___read_ptrs(fn_ptr, src, ___nolast(__VA_ARGS__)) ___read(fn, dst, ___type(src, ___nolast(__VA_ARGS__)), __t, ___last(__VA_ARGS__));
-#define ___core_read(fn, fn_ptr, dst, src, a, ...) ___apply(___core_read, ___empty(__VA_ARGS__))(fn, fn_ptr, dst, src, a, ##__VA_ARGS__)
+#define ___core_readN(fn, fn_ptr, dst, src, ...)                                                                       \
+    ___read_ptrs(fn_ptr, src, ___nolast(__VA_ARGS__))                                                                  \
+        ___read(fn, dst, ___type(src, ___nolast(__VA_ARGS__)), __t, ___last(__VA_ARGS__));
+#define ___core_read(fn, fn_ptr, dst, src, a, ...)                                                                     \
+    ___apply(___core_read, ___empty(__VA_ARGS__))(fn, fn_ptr, dst, src, a, ##__VA_ARGS__)
 
 /*
  * BPF_CORE_READ_INTO() is a more performance-conscious variant of
  * BPF_CORE_READ(), in which final field is read into user-provided storage.
  * See BPF_CORE_READ() below for more details on general usage.
  */
-#define BPF_CORE_READ_INTO(dst, src, a, ...) ({ ___core_read(bpf_core_read, bpf_core_read, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_CORE_READ_INTO(dst, src, a, ...)                                                                           \
+    ({ ___core_read(bpf_core_read, bpf_core_read, dst, (src), a, ##__VA_ARGS__) })
 
 /*
  * Variant of BPF_CORE_READ_INTO() for reading from user-space memory.
  *
  * NOTE: see comments for BPF_CORE_READ_USER() about the proper types use.
  */
-#define BPF_CORE_READ_USER_INTO(dst, src, a, ...) ({ ___core_read(bpf_core_read_user, bpf_core_read_user, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_CORE_READ_USER_INTO(dst, src, a, ...)                                                                      \
+    ({ ___core_read(bpf_core_read_user, bpf_core_read_user, dst, (src), a, ##__VA_ARGS__) })
 
 /* Non-CO-RE variant of BPF_CORE_READ_INTO() */
-#define BPF_PROBE_READ_INTO(dst, src, a, ...) ({ ___core_read(bpf_probe_read_kernel, bpf_probe_read_kernel, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_PROBE_READ_INTO(dst, src, a, ...)                                                                          \
+    ({ ___core_read(bpf_probe_read_kernel, bpf_probe_read_kernel, dst, (src), a, ##__VA_ARGS__) })
 
 /* Non-CO-RE variant of BPF_CORE_READ_USER_INTO().
  *
  * As no CO-RE relocations are emitted, source types can be arbitrary and are
  * not restricted to kernel types only.
  */
-#define BPF_PROBE_READ_USER_INTO(dst, src, a, ...) ({ ___core_read(bpf_probe_read_user, bpf_probe_read_user, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_PROBE_READ_USER_INTO(dst, src, a, ...)                                                                     \
+    ({ ___core_read(bpf_probe_read_user, bpf_probe_read_user, dst, (src), a, ##__VA_ARGS__) })
 
 /*
  * BPF_CORE_READ_STR_INTO() does same "pointer chasing" as
  * BPF_CORE_READ() for intermediate pointers, but then executes (and returns
  * corresponding error code) bpf_core_read_str() for final string read.
  */
-#define BPF_CORE_READ_STR_INTO(dst, src, a, ...) ({ ___core_read(bpf_core_read_str, bpf_core_read, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_CORE_READ_STR_INTO(dst, src, a, ...)                                                                       \
+    ({ ___core_read(bpf_core_read_str, bpf_core_read, dst, (src), a, ##__VA_ARGS__) })
 
 /*
  * Variant of BPF_CORE_READ_STR_INTO() for reading from user-space memory.
  *
  * NOTE: see comments for BPF_CORE_READ_USER() about the proper types use.
  */
-#define BPF_CORE_READ_USER_STR_INTO(dst, src, a, ...) ({ ___core_read(bpf_core_read_user_str, bpf_core_read_user, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_CORE_READ_USER_STR_INTO(dst, src, a, ...)                                                                  \
+    ({ ___core_read(bpf_core_read_user_str, bpf_core_read_user, dst, (src), a, ##__VA_ARGS__) })
 
 /* Non-CO-RE variant of BPF_CORE_READ_STR_INTO() */
-#define BPF_PROBE_READ_STR_INTO(dst, src, a, ...) ({ ___core_read(bpf_probe_read_kernel_str, bpf_probe_read_kernel, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_PROBE_READ_STR_INTO(dst, src, a, ...)                                                                      \
+    ({ ___core_read(bpf_probe_read_kernel_str, bpf_probe_read_kernel, dst, (src), a, ##__VA_ARGS__) })
 
 /*
  * Non-CO-RE variant of BPF_CORE_READ_USER_STR_INTO().
@@ -462,7 +484,8 @@ extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
  * As no CO-RE relocations are emitted, source types can be arbitrary and are
  * not restricted to kernel types only.
  */
-#define BPF_PROBE_READ_USER_STR_INTO(dst, src, a, ...) ({ ___core_read(bpf_probe_read_user_str, bpf_probe_read_user, dst, (src), a, ##__VA_ARGS__) })
+#define BPF_PROBE_READ_USER_STR_INTO(dst, src, a, ...)                                                                 \
+    ({ ___core_read(bpf_probe_read_user_str, bpf_probe_read_user, dst, (src), a, ##__VA_ARGS__) })
 
 /*
  * BPF_CORE_READ() is used to simplify BPF CO-RE relocatable read, especially
@@ -488,11 +511,11 @@ extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
  * N.B. Only up to 9 "field accessors" are supported, which should be more
  * than enough for any practical purpose.
  */
-#define BPF_CORE_READ(src, a, ...)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        ___type((src), a, ##__VA_ARGS__) __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-        BPF_CORE_READ_INTO(&__r, (src), a, ##__VA_ARGS__);                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-        __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+#define BPF_CORE_READ(src, a, ...)                                                                                     \
+    ({                                                                                                                 \
+        ___type((src), a, ##__VA_ARGS__) __r;                                                                          \
+        BPF_CORE_READ_INTO(&__r, (src), a, ##__VA_ARGS__);                                                             \
+        __r;                                                                                                           \
     })
 
 /*
@@ -505,19 +528,19 @@ extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
  * read kernel UAPI types from the user-space memory passed in as a syscall
  * input argument.
  */
-#define BPF_CORE_READ_USER(src, a, ...)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        ___type((src), a, ##__VA_ARGS__) __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-        BPF_CORE_READ_USER_INTO(&__r, (src), a, ##__VA_ARGS__);                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-        __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+#define BPF_CORE_READ_USER(src, a, ...)                                                                                \
+    ({                                                                                                                 \
+        ___type((src), a, ##__VA_ARGS__) __r;                                                                          \
+        BPF_CORE_READ_USER_INTO(&__r, (src), a, ##__VA_ARGS__);                                                        \
+        __r;                                                                                                           \
     })
 
 /* Non-CO-RE variant of BPF_CORE_READ() */
-#define BPF_PROBE_READ(src, a, ...)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        ___type((src), a, ##__VA_ARGS__) __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-        BPF_PROBE_READ_INTO(&__r, (src), a, ##__VA_ARGS__);                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-        __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+#define BPF_PROBE_READ(src, a, ...)                                                                                    \
+    ({                                                                                                                 \
+        ___type((src), a, ##__VA_ARGS__) __r;                                                                          \
+        BPF_PROBE_READ_INTO(&__r, (src), a, ##__VA_ARGS__);                                                            \
+        __r;                                                                                                           \
     })
 
 /*
@@ -526,11 +549,11 @@ extern void *bpf_rdonly_cast(const void *obj, __u32 btf_id) __ksym __weak;
  * As no CO-RE relocations are emitted, source types can be arbitrary and are
  * not restricted to kernel types only.
  */
-#define BPF_PROBE_READ_USER(src, a, ...)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       \
-    ({                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
-        ___type((src), a, ##__VA_ARGS__) __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-        BPF_PROBE_READ_USER_INTO(&__r, (src), a, ##__VA_ARGS__);                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        __r;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
+#define BPF_PROBE_READ_USER(src, a, ...)                                                                               \
+    ({                                                                                                                 \
+        ___type((src), a, ##__VA_ARGS__) __r;                                                                          \
+        BPF_PROBE_READ_USER_INTO(&__r, (src), a, ##__VA_ARGS__);                                                       \
+        __r;                                                                                                           \
     })
 
 #endif

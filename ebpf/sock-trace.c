@@ -127,14 +127,16 @@ static __always_inline bool filter_meta(struct sock *sk)
         if (cfg->protocol && protocol != cfg->protocol)
             return false;
 
-        if (cfg->addr && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr) && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_daddr))
+        if (cfg->addr && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr)
+            && cfg->addr != BPF_CORE_READ(sk, __sk_common.skc_daddr))
             return false;
 
         if (cfg->port) {
             if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP)
                 return false;
 
-            if (cfg->port_le != BPF_CORE_READ(sk, __sk_common.skc_num) && cfg->port_be != BPF_CORE_READ(sk, __sk_common.skc_dport))
+            if (cfg->port_le != BPF_CORE_READ(sk, __sk_common.skc_num)
+                && cfg->port_be != BPF_CORE_READ(sk, __sk_common.skc_dport))
                 return false;
         }
     }
