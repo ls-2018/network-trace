@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	_ "ebpf-nftrace/pkg/iptables"
-	"ebpf-nftrace/pkg/xdp"
+	"ebpf-nftrace/pkg/tcp"
 	"ebpf-nftrace/utils/nft"
 	"flag"
 	"github.com/cilium/ebpf/rlimit"
@@ -25,6 +25,7 @@ func main() {
 	}
 	//go nftables.Run(ctx)
 	//iptables.Run(ctx)
-	go xdp.Run(ctx)
+	// 	go xdp.Run(ctx)
+	go tcp.Run(ctx)
 	<-ctx.Done()
 }

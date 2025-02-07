@@ -39,17 +39,17 @@ func (s sockType) String() string {
 	}
 }
 
-type socketState uint16
+type SocketState uint16
 
 const (
-	socketStateFree socketState = iota
+	socketStateFree SocketState = iota
 	socketStateUnconnected
 	socketStateConnecting
 	socketStateConnected
 	socketStateDisconnecting
 )
 
-func (s socketState) String() string {
+func (s SocketState) String() string {
 	switch s {
 	case socketStateFree:
 		return "FREE"
@@ -66,65 +66,65 @@ func (s socketState) String() string {
 	}
 }
 
-type addressFamily uint16
+type AddressFamily uint16
 
 const (
-	AF_UNSPEC     addressFamily = 0
-	AF_UNIX       addressFamily = 1  /* Unix domain sockets 		*/
-	AF_LOCAL      addressFamily = 1  /* POSIX name for AF_UNIX	*/
-	AF_INET       addressFamily = 2  /* Internet IP Protocol 	*/
-	AF_AX25       addressFamily = 3  /* Amateur Radio AX.25 		*/
-	AF_IPX        addressFamily = 4  /* Novell IPX 			*/
-	AF_APPLETALK  addressFamily = 5  /* AppleTalk DDP 		*/
-	AF_NETROM     addressFamily = 6  /* Amateur Radio NET/ROM 	*/
-	AF_BRIDGE     addressFamily = 7  /* Multiprotocol bridge 	*/
-	AF_ATMPVC     addressFamily = 8  /* ATM PVCs			*/
-	AF_X25        addressFamily = 9  /* Reserved for X.25 project 	*/
-	AF_INET6      addressFamily = 10 /* IP version 6			*/
-	AF_ROSE       addressFamily = 11 /* Amateur Radio X.25 PLP	*/
-	AF_DECnet     addressFamily = 12 /* Reserved for DECnet project	*/
-	AF_NETBEUI    addressFamily = 13 /* Reserved for 802.2LLC project*/
-	AF_SECURITY   addressFamily = 14 /* Security callback pseudo AF */
-	AF_KEY        addressFamily = 15 /* PF_KEY key management API */
-	AF_NETLINK    addressFamily = 16
-	AF_ROUTE      addressFamily = AF_NETLINK /* Alias to emulate 4.4BSD */
-	AF_PACKET     addressFamily = 17         /* Packet family		*/
-	AF_ASH        addressFamily = 18         /* Ash				*/
-	AF_ECONET     addressFamily = 19         /* Acorn Econet			*/
-	AF_ATMSVC     addressFamily = 20         /* ATM SVCs			*/
-	AF_RDS        addressFamily = 21         /* RDS sockets 			*/
-	AF_SNA        addressFamily = 22         /* Linux SNA Project (nutters!) */
-	AF_IRDA       addressFamily = 23         /* IRDA sockets			*/
-	AF_PPPOX      addressFamily = 24         /* PPPoX sockets		*/
-	AF_WANPIPE    addressFamily = 25         /* Wanpipe API Sockets */
-	AF_LLC        addressFamily = 26         /* Linux LLC			*/
-	AF_IB         addressFamily = 27         /* Native InfiniBand address	*/
-	AF_MPLS       addressFamily = 28         /* MPLS */
-	AF_CAN        addressFamily = 29         /* Controller Area Network      */
-	AF_TIPC       addressFamily = 30         /* TIPC sockets			*/
-	AF_BLUETOOTH  addressFamily = 31         /* Bluetooth sockets 		*/
-	AF_IUCV       addressFamily = 32         /* IUCV sockets			*/
-	AF_RXRPC      addressFamily = 33         /* RxRPC sockets 		*/
-	AF_ISDN       addressFamily = 34         /* mISDN sockets 		*/
-	AF_PHONET     addressFamily = 35         /* Phonet sockets		*/
-	AF_IEEE802154 addressFamily = 36         /* IEEE802154 sockets		*/
-	AF_CAIF       addressFamily = 37         /* CAIF sockets			*/
-	AF_ALG        addressFamily = 38         /* Algorithm sockets		*/
-	AF_NFC        addressFamily = 39         /* NFC sockets			*/
-	AF_VSOCK      addressFamily = 40         /* vSockets			*/
-	AF_KCM        addressFamily = 41         /* Kernel Connection Multiplexor*/
-	AF_QIPCRTR    addressFamily = 42         /* Qualcomm IPC Router          */
-	AF_SMC        addressFamily = 43         /* smc sockets: reserve number for
+	AF_UNSPEC     AddressFamily = 0
+	AF_UNIX       AddressFamily = 1  /* Unix domain sockets 		*/
+	AF_LOCAL      AddressFamily = 1  /* POSIX name for AF_UNIX	*/
+	AF_INET       AddressFamily = 2  /* Internet IP Protocol 	*/
+	AF_AX25       AddressFamily = 3  /* Amateur Radio AX.25 		*/
+	AF_IPX        AddressFamily = 4  /* Novell IPX 			*/
+	AF_APPLETALK  AddressFamily = 5  /* AppleTalk DDP 		*/
+	AF_NETROM     AddressFamily = 6  /* Amateur Radio NET/ROM 	*/
+	AF_BRIDGE     AddressFamily = 7  /* Multiprotocol bridge 	*/
+	AF_ATMPVC     AddressFamily = 8  /* ATM PVCs			*/
+	AF_X25        AddressFamily = 9  /* Reserved for X.25 project 	*/
+	AF_INET6      AddressFamily = 10 /* IP version 6			*/
+	AF_ROSE       AddressFamily = 11 /* Amateur Radio X.25 PLP	*/
+	AF_DECnet     AddressFamily = 12 /* Reserved for DECnet project	*/
+	AF_NETBEUI    AddressFamily = 13 /* Reserved for 802.2LLC project*/
+	AF_SECURITY   AddressFamily = 14 /* Security callback pseudo AF */
+	AF_KEY        AddressFamily = 15 /* PF_KEY key management API */
+	AF_NETLINK    AddressFamily = 16
+	AF_ROUTE      AddressFamily = AF_NETLINK /* Alias to emulate 4.4BSD */
+	AF_PACKET     AddressFamily = 17         /* Packet family		*/
+	AF_ASH        AddressFamily = 18         /* Ash				*/
+	AF_ECONET     AddressFamily = 19         /* Acorn Econet			*/
+	AF_ATMSVC     AddressFamily = 20         /* ATM SVCs			*/
+	AF_RDS        AddressFamily = 21         /* RDS sockets 			*/
+	AF_SNA        AddressFamily = 22         /* Linux SNA Project (nutters!) */
+	AF_IRDA       AddressFamily = 23         /* IRDA sockets			*/
+	AF_PPPOX      AddressFamily = 24         /* PPPoX sockets		*/
+	AF_WANPIPE    AddressFamily = 25         /* Wanpipe API Sockets */
+	AF_LLC        AddressFamily = 26         /* Linux LLC			*/
+	AF_IB         AddressFamily = 27         /* Native InfiniBand address	*/
+	AF_MPLS       AddressFamily = 28         /* MPLS */
+	AF_CAN        AddressFamily = 29         /* Controller Area Network      */
+	AF_TIPC       AddressFamily = 30         /* TIPC sockets			*/
+	AF_BLUETOOTH  AddressFamily = 31         /* Bluetooth sockets 		*/
+	AF_IUCV       AddressFamily = 32         /* IUCV sockets			*/
+	AF_RXRPC      AddressFamily = 33         /* RxRPC sockets 		*/
+	AF_ISDN       AddressFamily = 34         /* mISDN sockets 		*/
+	AF_PHONET     AddressFamily = 35         /* Phonet sockets		*/
+	AF_IEEE802154 AddressFamily = 36         /* IEEE802154 sockets		*/
+	AF_CAIF       AddressFamily = 37         /* CAIF sockets			*/
+	AF_ALG        AddressFamily = 38         /* Algorithm sockets		*/
+	AF_NFC        AddressFamily = 39         /* NFC sockets			*/
+	AF_VSOCK      AddressFamily = 40         /* vSockets			*/
+	AF_KCM        AddressFamily = 41         /* Kernel Connection Multiplexor*/
+	AF_QIPCRTR    AddressFamily = 42         /* Qualcomm IPC Router          */
+	AF_SMC        AddressFamily = 43         /* smc sockets: reserve number for
 	 * PF_SMC protocol family that
 	 * reuses AF_INET address family
 	 */
-	AF_XDP  addressFamily = 44 /* XDP sockets			*/
-	AF_MCTP addressFamily = 45 /* Management component
+	AF_XDP  AddressFamily = 44 /* XDP sockets			*/
+	AF_MCTP AddressFamily = 45 /* Management component
 	 * transport protocol
 	 */
 )
 
-func (a addressFamily) String() string {
+func (a AddressFamily) String() string {
 	switch a {
 	case AF_UNSPEC:
 		return "AF_UNSPEC"
@@ -223,40 +223,40 @@ func (a addressFamily) String() string {
 	}
 }
 
-type ipProto uint16
+type IpProto uint16
 
 const (
-	IPPROTO_IP       ipProto = 0   /* Dummy protocol for TCP		*/
-	IPPROTO_ICMP     ipProto = 1   /* Internet Control Message Protocol	*/
-	IPPROTO_IGMP     ipProto = 2   /* Internet Group Management Protocol	*/
-	IPPROTO_IPIP     ipProto = 4   /* IPIP tunnels (older KA9Q tunnels use 94) */
-	IPPROTO_TCP      ipProto = 6   /* Transmission Control Protocol	*/
-	IPPROTO_EGP      ipProto = 8   /* Exterior Gateway Protocol		*/
-	IPPROTO_PUP      ipProto = 12  /* PUP protocol				*/
-	IPPROTO_UDP      ipProto = 17  /* User Datagram Protocol		*/
-	IPPROTO_IDP      ipProto = 22  /* XNS IDP protocol			*/
-	IPPROTO_TP       ipProto = 29  /* SO Transport Protocol Class 4	*/
-	IPPROTO_DCCP     ipProto = 33  /* Datagram Congestion Control Protocol */
-	IPPROTO_IPV6     ipProto = 41  /* IPv6-in-IPv4 tunnelling		*/
-	IPPROTO_RSVP     ipProto = 46  /* RSVP Protocol			*/
-	IPPROTO_GRE      ipProto = 47  /* Cisco GRE tunnels (rfc 1701,1702)	*/
-	IPPROTO_ESP      ipProto = 50  /* Encapsulation Security Payload protocol */
-	IPPROTO_AH       ipProto = 51  /* Authentication Header protocol	*/
-	IPPROTO_MTP      ipProto = 92  /* Multicast Transport Protocol		*/
-	IPPROTO_BEETPH   ipProto = 94  /* IP option pseudo header for BEET	*/
-	IPPROTO_ENCAP    ipProto = 98  /* Encapsulation Header			*/
-	IPPROTO_PIM      ipProto = 103 /* Protocol Independent Multicast	*/
-	IPPROTO_COMP     ipProto = 108 /* Compression Header Protocol		*/
-	IPPROTO_L2TP     ipProto = 115 /* Layer 2 Tunnelling Protocol		*/
-	IPPROTO_SCTP     ipProto = 132 /* Stream Control Transport Protocol	*/
-	IPPROTO_UDPLITE  ipProto = 136 /* UDP-Lite (RFC 3828)			*/
-	IPPROTO_MPLS     ipProto = 137 /* MPLS in IP (RFC 4023)		*/
-	IPPROTO_ETHERNET ipProto = 143 /* Ethernet-within-IPv6 Encapsulation	*/
-	IPPROTO_RAW      ipProto = 255 /* Raw IP packets			*/
-	IPPROTO_MPTCP    ipProto = 262 /* Multipath TCP connection		*/
+	IPPROTO_IP       IpProto = 0   /* Dummy protocol for TCP		*/
+	IPPROTO_ICMP     IpProto = 1   /* Internet Control Message Protocol	*/
+	IPPROTO_IGMP     IpProto = 2   /* Internet Group Management Protocol	*/
+	IPPROTO_IPIP     IpProto = 4   /* IPIP tunnels (older KA9Q tunnels use 94) */
+	IPPROTO_TCP      IpProto = 6   /* Transmission Control Protocol	*/
+	IPPROTO_EGP      IpProto = 8   /* Exterior Gateway Protocol		*/
+	IPPROTO_PUP      IpProto = 12  /* PUP protocol				*/
+	IPPROTO_UDP      IpProto = 17  /* User Datagram Protocol		*/
+	IPPROTO_IDP      IpProto = 22  /* XNS IDP protocol			*/
+	IPPROTO_TP       IpProto = 29  /* SO Transport Protocol Class 4	*/
+	IPPROTO_DCCP     IpProto = 33  /* Datagram Congestion Control Protocol */
+	IPPROTO_IPV6     IpProto = 41  /* IPv6-in-IPv4 tunnelling		*/
+	IPPROTO_RSVP     IpProto = 46  /* RSVP Protocol			*/
+	IPPROTO_GRE      IpProto = 47  /* Cisco GRE tunnels (rfc 1701,1702)	*/
+	IPPROTO_ESP      IpProto = 50  /* Encapsulation Security Payload protocol */
+	IPPROTO_AH       IpProto = 51  /* Authentication Header protocol	*/
+	IPPROTO_MTP      IpProto = 92  /* Multicast Transport Protocol		*/
+	IPPROTO_BEETPH   IpProto = 94  /* IP option pseudo header for BEET	*/
+	IPPROTO_ENCAP    IpProto = 98  /* Encapsulation Header			*/
+	IPPROTO_PIM      IpProto = 103 /* Protocol Independent Multicast	*/
+	IPPROTO_COMP     IpProto = 108 /* Compression Header Protocol		*/
+	IPPROTO_L2TP     IpProto = 115 /* Layer 2 Tunnelling Protocol		*/
+	IPPROTO_SCTP     IpProto = 132 /* Stream Control Transport Protocol	*/
+	IPPROTO_UDPLITE  IpProto = 136 /* UDP-Lite (RFC 3828)			*/
+	IPPROTO_MPLS     IpProto = 137 /* MPLS in IP (RFC 4023)		*/
+	IPPROTO_ETHERNET IpProto = 143 /* Ethernet-within-IPv6 Encapsulation	*/
+	IPPROTO_RAW      IpProto = 255 /* Raw IP packets			*/
+	IPPROTO_MPTCP    IpProto = 262 /* Multipath TCP connection		*/
 )
 
-func (i ipProto) String() string {
+func (i IpProto) String() string {
 	switch i {
 	case IPPROTO_IP:
 		return "IPPROTO_IP"
@@ -398,10 +398,10 @@ func (n netlinkProto) String() string {
 	}
 }
 
-type sockState uint8
+type SockState uint8
 
 const (
-	TCP_ESTABLISHED sockState = 1 + iota
+	TCP_ESTABLISHED SockState = 1 + iota
 	TCP_SYN_SENT
 	TCP_SYN_RECV
 	TCP_FIN_WAIT1
@@ -416,7 +416,7 @@ const (
 	TCP_BOUND_INACTIVE /* Pseudo-state for inet_diag */
 )
 
-func (t sockState) String() string {
+func (t SockState) String() string {
 	switch t {
 	case TCP_ESTABLISHED:
 		return "ESTABLISHED"

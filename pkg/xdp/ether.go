@@ -26,5 +26,5 @@ type IpHdr struct {
 }
 
 func IntToIP(ipInt uint32) net.IP {
-	return net.IPv4(byte(ipInt>>24), byte(ipInt>>16&0xFF), byte(ipInt>>8&0xFF), byte(ipInt&0xFF))
+	return net.IPv4(byte(ipInt&0xFF), byte(ipInt>>8&0xFF), byte(ipInt>>16&0xFF), byte(ipInt>>24))
 }

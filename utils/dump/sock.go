@@ -13,12 +13,12 @@ func PrintMeta(w io.Writer, meta *Meta) {
 	daddr := netip.AddrFrom4([4]byte(meta.Addrs[:4]))
 	dport := binary.BigEndian.Uint16(meta.Dport[:])
 	sport := meta.PortNum
-	family := addressFamily(meta.Family)
+	family := AddressFamily(meta.Family)
 
 	var protocol string
 	switch family {
 	case AF_INET, AF_INET6:
-		protocol = ipProto(meta.Protocol).String()
+		protocol = IpProto(meta.Protocol).String()
 	case AF_NETLINK:
 		protocol = netlinkProto(meta.Protocol).String()
 	default:

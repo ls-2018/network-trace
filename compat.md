@@ -1,0 +1,1 @@
+- COMPAT_SYSCALL_DEFINE2(socketcall, int, call, u32 __user *, args)

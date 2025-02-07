@@ -3,6 +3,7 @@ project(ebpf-nftrace C)
 
 set(CMAKE_C_STANDARD 11)
 include_directories("./ebpf/headers")
+add_definitions(-DUSE_RING_BUF)
 
 add_library(ebpf-nftrace
         ./ebpf/ethtool-trace.c
@@ -11,5 +12,6 @@ add_library(ebpf-nftrace
         ./ebpf/skbtracer.c
         ./ebpf/tcp-connecting.c
         ./ebpf/unix-sock-trace.c
-        ./ebpf/xdp.c
+        ./ebpf/sock-trace.c
+#        ./ebpf/xdp.c
 )
