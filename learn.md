@@ -476,3 +476,19 @@ int freplace_handler() {
 - ipvs
 - host route
 - host <-> host
+
+
+
+
+
+
+struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+struct task_struct *parent_task = READ_KERN(task->real_parent);
+u64 tgid = bpf_get_current_pid_tgid();
+event->host_pid = tgid >> 32;
+event->host_ppid = READ_KERN(parent_task->tgid);
+
+struct nsproxy *namespaceproxy = READ_KERN(task->nsproxy);
+char *uts_name = READ_KERN(READ_KERN(namespaceproxy->uts_ns)->name.nodename);
+bpf_probe_read_str(&event->nodename, 65, uts_name);
+bpf_get_current_comm(&event->comm, sizeof(event->comm));

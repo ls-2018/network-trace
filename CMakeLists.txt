@@ -13,5 +13,6 @@ add_library(ebpf-nftrace
         ./ebpf/tcp-connecting.c
         ./ebpf/unix-sock-trace.c
         ./ebpf/sock-trace.c
+        ./ebpf/tcptrace.bpf.c
 #        ./ebpf/xdp.c
 )

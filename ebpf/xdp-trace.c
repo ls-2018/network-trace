@@ -90,9 +90,7 @@ int trace_packets(struct xdp_md *ctx)
         ct.d_ip = bpf_ntohl(iph->daddr);
         ct.s_port = bpf_ntohs(src_port);
         ct.d_port = bpf_ntohs(dest_port);
-        bpf_printk("%02x:%02x:%02x:%02x:%02x:%02x --> %02x:%02x:%02x:%02x:%02x:%02x", eth->h_source[0],
-            eth->h_source[1], eth->h_source[2], eth->h_source[3], eth->h_source[4], eth->h_source[5], eth->h_dest[0],
-            eth->h_dest[1], eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
+        bpf_printk("%02x:%02x:%02x:%02x:%02x:%02x --> %02x:%02x:%02x:%02x:%02x:%02x", eth->h_source[0], eth->h_source[1], eth->h_source[2], eth->h_source[3], eth->h_source[4], eth->h_source[5], eth->h_dest[0], eth->h_dest[1], eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
         bpf_printk("%pi4:%d ---> %pi4:%d", &iph->saddr, ct.s_port, &iph->daddr, ct.d_port);
     };
     //    bpf_printk("eth proto : %d ", bpf_ntohs(eth->h_proto)); // ETH_P_IP

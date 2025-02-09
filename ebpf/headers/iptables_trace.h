@@ -130,9 +130,7 @@ struct event_t {
 } __attribute__((packed));
 
 #define __sizeof_event sizeof(struct event_t)
-#define __sizeof_event_base                                                                                            \
-    8 + 8 + 4 + sizeof(struct pkt_info_t) + sizeof(struct l2_info_t) + sizeof(struct l3_info_t)                        \
-        + sizeof(struct l4_info_t) + sizeof(struct icmp_info_t)
+#define __sizeof_event_base 8 + 8 + 4 + sizeof(struct pkt_info_t) + sizeof(struct l2_info_t) + sizeof(struct l3_info_t) + sizeof(struct l4_info_t) + sizeof(struct icmp_info_t)
 #define __sizeof_ipt_info sizeof(struct iptables_info_t)
 #define __sizeof_ipt_trace sizeof(struct iptables_trace_t)
 
@@ -320,12 +318,10 @@ static __always_inline void set_icmp_info(struct sk_buff *skb, struct icmp_info_
     icmp_info->icmpseq = bpf_ntohs(ih.un.echo.sequence);
 }
 
-static __always_inline void set_iptables_info(
-    struct xt_table *table, const struct nf_hook_state *state, u32 verdict, u64 delay, struct iptables_info_t *ipt_info)
+static __always_inline void set_iptables_info(struct xt_table *table, const struct nf_hook_state *state, u32 verdict, u64 delay, struct iptables_info_t *ipt_info)
 {
     // BPF_CORE_READ_STR_INTO(&ipt_info->tablename, table, name); /* failed of bad CO-RE relocation */
-    bpf_probe_read_kernel_str(
-        &ipt_info->tablename, XT_TABLE_MAXNAMELEN, (void *)table + offsetof(struct xt_table, name));
+    bpf_probe_read_kernel_str(&ipt_info->tablename, XT_TABLE_MAXNAMELEN, (void *)table + offsetof(struct xt_table, name));
     BPF_CORE_READ_INTO(&ipt_info->hook, state, hook);
     BPF_CORE_READ_INTO(&ipt_info->pf, state, pf);
     ipt_info->delay = delay;

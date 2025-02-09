@@ -30,11 +30,7 @@ static __always_inline u32 get_trace_id(struct sk_buff *skb)
     return jhash_2words(hash32_ptr(skb), BPF_CORE_READ(skb, hash), BPF_CORE_READ(skb, skb_iif));
 }
 
-static __always_inline u32 hash_from_tuple_v4(const struct ip_tuple *tuple)
-{
-    return jhash_3words(
-        tuple->src_ip4, ((u32)tuple->dst_port << 16) | tuple->src_port, tuple->ip_proto, HASH_INIT4_SEED);
-}
+static __always_inline u32 hash_from_tuple_v4(const struct ip_tuple *tuple) { return jhash_3words(tuple->src_ip4, ((u32)tuple->dst_port << 16) | tuple->src_port, tuple->ip_proto, HASH_INIT4_SEED); }
 
 static __always_inline u32 hash_from_tuple_v6(const struct ip_tuple *tuple)
 {

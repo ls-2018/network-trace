@@ -1,8 +1,7 @@
-package xdp
+package ether
 
 import (
 	"fmt"
-	"net"
 )
 
 type Mac [6]byte
@@ -25,6 +24,9 @@ type IpHdr struct {
 	DAddr    uint32 `json:"daddr"`
 }
 
-func IntToIP(ipInt uint32) net.IP {
-	return net.IPv4(byte(ipInt&0xFF), byte(ipInt>>8&0xFF), byte(ipInt>>16&0xFF), byte(ipInt>>24))
+func ReverseBytes(data []byte) []byte {
+	for i := 0; i < len(data)/2; i++ {
+		data[i], data[len(data)-1-i] = data[len(data)-1-i], data[i]
+	}
+	return data
 }

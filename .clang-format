@@ -5,7 +5,7 @@ BasedOnStyle: WebKit
 #访问修饰符前的空格
 AccessModifierOffset: -4
 # 在未封闭(括号的开始和结束不在同一行)的括号中的代码是否对齐
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: Align
 AlignArrayOfStructures: None
 AlignConsecutiveMacros: None
 AlignConsecutiveAssignments: None
@@ -20,6 +20,7 @@ AllowAllArgumentsOnNextLine: true
 # 函数参数换行
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortEnumsOnASingleLine: true
+# 禁止在单行内写短块
 AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false
 # 是否允许短方法单行
@@ -36,7 +37,7 @@ AttributeMacros:
   - __capability
 BinPackArguments: true
 BinPackParameters: true
-# 大括号换行,只有当BreakBeforeBraces设置为Custom时才有效
+# 大括号换行,只有当 BreakBeforeBraces 设置为 Custom 时才有效
 BraceWrapping:
   AfterCaseLabel: false
   AfterExternBlock: false
@@ -48,23 +49,23 @@ BraceWrapping:
   # class定义后面
   AfterClass: false
   # 控制语句后面
-  AfterControlStatement: "false"
+  AfterControlStatement: true
   # enum定义后面
   AfterEnum: false
   # 函数定义后面
-  AfterFunction: false
+  AfterFunction: true
   # 命名空间定义后面
   AfterNamespace: false
   # ObjC定义后面
   AfterObjCDeclaration: false
   # struct定义后面
-  AfterStruct: false
+  AfterStruct: true
   # union定义后面
   AfterUnion: true
   # catch之前
   BeforeCatch: true
   # else之前
-  BeforeElse: true
+  BeforeElse: false
   # 缩进大括号
   IndentBraces: false
 BreakBeforeBinaryOperators: All
@@ -80,7 +81,7 @@ BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
 # 每行字符的长度
-ColumnLimit: 120
+ColumnLimit: 0
 CommentPragmas: "^ IWYU pragma:"
 QualifierAlignment: Leave
 CompactNamespaces: false

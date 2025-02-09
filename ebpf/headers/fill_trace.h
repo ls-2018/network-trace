@@ -4,20 +4,11 @@
 #include "hash.h"
 #include "nftrace.h"
 
-static __always_inline int skb_mac_header_was_set(const struct sk_buff *skb)
-{
-    return BPF_CORE_READ(skb, mac_header) != (typeof(BPF_CORE_READ(skb, mac_header)))~0U;
-}
+static __always_inline int skb_mac_header_was_set(const struct sk_buff *skb) { return BPF_CORE_READ(skb, mac_header) != (typeof(BPF_CORE_READ(skb, mac_header)))~0U; }
 
-static __always_inline unsigned char *skb_mac_header(const struct sk_buff *skb)
-{
-    return BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, mac_header);
-}
+static __always_inline unsigned char *skb_mac_header(const struct sk_buff *skb) { return BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, mac_header); }
 
-static __always_inline unsigned char *skb_network_header(const struct sk_buff *skb)
-{
-    return BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, network_header);
-}
+static __always_inline unsigned char *skb_network_header(const struct sk_buff *skb) { return BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, network_header); }
 
 static __always_inline void fill_trace_pkt_info(struct trace_info *trace, const struct sk_buff *skb)
 {
@@ -96,14 +87,13 @@ static __always_inline void fill_trace_pkt_info(struct trace_info *trace, const 
     }
 }
 
-static __always_inline void fill_trace(struct trace_info *trace, const struct nft_pktinfo *pkt,
-    const struct nft_verdict *verdict,
+static __always_inline void fill_trace(struct trace_info *trace, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict,
 #if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
-    const struct nft_rule *rule,
+                                       const struct nft_rule *rule,
 #else
-    const struct nft_rule_dp *rule,
+                                       const struct nft_rule_dp *rule,
 #endif
-    struct nft_traceinfo *info)
+                                       struct nft_traceinfo *info)
 {
 
     struct process_info *p = &trace->process;
@@ -112,8 +102,7 @@ static __always_inline void fill_trace(struct trace_info *trace, const struct nf
     trace->id = BPF_CORE_READ(pkt, skb, hash); // get_trace_id(BPF_CORE_READ(pkt, skb));
     trace->type = BPF_CORE_READ_BITFIELD_PROBED(info, type);
     trace->family = BPF_CORE_READ(info, basechain, type, family);
-    bpf_probe_read_kernel_str(
-        trace->table_name, sizeof(trace->table_name), BPF_CORE_READ(info, basechain, chain.table, name));
+    bpf_probe_read_kernel_str(trace->table_name, sizeof(trace->table_name), BPF_CORE_READ(info, basechain, chain.table, name));
     trace->table_handle = BPF_CORE_READ(info, basechain, chain.table, handle);
     bpf_probe_read_kernel_str(trace->chain_name, sizeof(trace->chain_name), BPF_CORE_READ(info, basechain, chain.name));
     trace->chain_handle = BPF_CORE_READ(info, basechain, chain.handle);

@@ -21,11 +21,22 @@ struct process_info {
 } __attribute__((packed));
 
 // struct process_info *
-#define fill_process_info(p)                                                                                           \
-    bpf_get_current_comm(&p->name, sizeof(p->name));                                                                   \
+#define fill_process_info(p)                         \
+    bpf_get_current_comm(&p->name, sizeof(p->name)); \
     p->pid = bpf_get_current_pid_tgid() >> 32;
 
 #endif
 
 //     struct process_info *p = &pkt->process;
 //       fill_process_info(p);
+
+#ifndef TASK_COMM_LEN
+#define TASK_COMM_LEN 16
+#endif
+
+#define TCP_EVENT_TYPE_CONNECT 1
+#define TCP_EVENT_TYPE_ACCEPT 2
+#define TCP_EVENT_TYPE_CLOSE 3
+#define TCP_EVENT_TYPE_FD_INSTALL 4
+
+#define IP6_LEN 16

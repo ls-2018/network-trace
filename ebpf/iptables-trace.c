@@ -53,8 +53,7 @@ static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, st
     return true;
 }
 
-static __noinline int ipt_do_table_in(
-    struct pt_regs *ctx, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table)
+static __noinline int ipt_do_table_in(struct pt_regs *ctx, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table)
 {
     u64 pid_tgid;
     pid_tgid = bpf_get_current_pid_tgid();
@@ -74,8 +73,7 @@ static __noinline int ipt_do_table_in(
     return BPF_OK;
 };
 
-static __inline int __ipt_do_table_trace(struct pt_regs *ctx, u8 pf, unsigned int hooknum, struct sk_buff *skb,
-    struct net_device *in, struct net_device *out, char *tablename, char *chainname, unsigned int rulenum)
+static __inline int __ipt_do_table_trace(struct pt_regs *ctx, u8 pf, unsigned int hooknum, struct sk_buff *skb, struct net_device *in, struct net_device *out, char *tablename, char *chainname, unsigned int rulenum)
 {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     void *val = bpf_map_lookup_elem(&skbtracer_ipt, &pid_tgid);
@@ -144,16 +142,10 @@ static __noinline int ipt_do_table_out(struct pt_regs *ctx, uint verdict)
 
 #if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
 SEC("kprobe/ipt_do_table")
-int BPF_KPROBE(k_ipt_do_table, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table)
-{
-    return __ipt_do_table_in(ctx, skb, state, table);
-}
+int BPF_KPROBE(k_ipt_do_table, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table) { return __ipt_do_table_in(ctx, skb, state, table); }
 #else
 SEC("kprobe/ipt_do_table")
-int BPF_KPROBE(k_ipt_do_table, struct xt_table *table, struct sk_buff *skb, const struct nf_hook_state *state)
-{
-    return ipt_do_table_in(ctx, skb, state, table);
-};
+int BPF_KPROBE(k_ipt_do_table, struct xt_table *table, struct sk_buff *skb, const struct nf_hook_state *state) { return ipt_do_table_in(ctx, skb, state, table); };
 #endif
 
 SEC("kretprobe/ipt_do_table")
@@ -174,8 +166,7 @@ int BPF_KRETPROBE(kr_ipt_do_table, uint ret) { return ipt_do_table_out(ctx, ret)
 // }
 
 SEC("kprobe/nf_log_trace")
-int BPF_KPROBE(
-    k_nf_log_trace, struct net *net, u_int8_t pf, unsigned int hooknum, struct sk_buff *skb, struct net_device *in)
+int BPF_KPROBE(k_nf_log_trace, struct net *net, u_int8_t pf, unsigned int hooknum, struct sk_buff *skb, struct net_device *in)
 {
 
     struct net_device *out = (void *)regs_get_nth_argument(ctx, 5);

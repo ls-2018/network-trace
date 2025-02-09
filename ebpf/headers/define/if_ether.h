@@ -72,8 +72,8 @@
 #define ETH_P_IPV6 0x86DD      /* IPv6 over bluebook		*/
 #define ETH_P_PAUSE 0x8808     /* IEEE Pause frames. See 802.3 31B */
 #define ETH_P_SLOW 0x8809      /* Slow Protocol. See 802.3ad 43B */
-#define ETH_P_WCCP                                                                                                     \
-    0x883E                    /* Web-cache coordination protocol                                                       \
+#define ETH_P_WCCP                                               \
+    0x883E                    /* Web-cache coordination protocol \
                                * defined in draft-wilson-wrec-wccp-v2-00.txt */
 #define ETH_P_MPLS_UC 0x8847  /* MPLS Unicast traffic		*/
 #define ETH_P_MPLS_MC 0x8848  /* MPLS Multicast traffic	*/
@@ -81,9 +81,9 @@
 #define ETH_P_PPP_DISC 0x8863 /* PPPoE discovery messages     */
 #define ETH_P_PPP_SES 0x8864  /* PPPoE session messages	*/
 #define ETH_P_LINK_CTL 0x886c /* HPNA, wlan link local tunnel */
-#define ETH_P_ATMFATE                                                                                                  \
-    0x8884                     /* Frame-based ATM Transport                                                            \
-                                * over Ethernet                                                                        \
+#define ETH_P_ATMFATE                                       \
+    0x8884                     /* Frame-based ATM Transport \
+                                * over Ethernet             \
                                 */
 #define ETH_P_PAE 0x888E       /* Port Access Entity (IEEE 802.1X) */
 #define ETH_P_PROFINET 0x8892  /* PROFINET			*/
@@ -120,8 +120,8 @@
 #define ETH_P_IFE 0xED3E       /* ForCES inter-FE LFB type */
 #define ETH_P_AF_IUCV 0xFBFB   /* IBM af_iucv [ NOT AN OFFICIALLY REGISTERED ID ] */
 
-#define ETH_P_802_3_MIN                                                                                                \
-    0x0600 /* If the value in the ethernet type is more than this value                                                \
+#define ETH_P_802_3_MIN                                                 \
+    0x0600 /* If the value in the ethernet type is more than this value \
             * then the frame is Ethernet II. Else it is 802.3 */
 
 /*
@@ -154,13 +154,13 @@
 #define ETH_P_IEEE802154 0x00F6 /* IEEE802.15.4 frame		*/
 #define ETH_P_CAIF 0x00F7       /* ST-Ericsson CAIF protocol	*/
 #define ETH_P_XDSA 0x00F8       /* Multiplexed DSA protocol	*/
-#define ETH_P_MAP                                                                                                      \
-    0x00F9 /* Qualcomm multiplexing and                                                                                \
-            * aggregation protocol                                                                                     \
+#define ETH_P_MAP                       \
+    0x00F9 /* Qualcomm multiplexing and \
+            * aggregation protocol      \
             */
-#define ETH_P_MCTP                                                                                                     \
-    0x00FA /* Management component transport                                                                           \
-            * protocol packets                                                                                         \
+#define ETH_P_MCTP                           \
+    0x00FA /* Management component transport \
+            * protocol packets               \
             */
 
 #endif /* _UAPI_LINUX_IF_ETHER_H */

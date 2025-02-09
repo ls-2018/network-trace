@@ -13,17 +13,20 @@ import (
 )
 
 type tcpconnEventT struct {
-	Oldstate int32
-	Newstate int32
-	Sport    uint16
-	Dport    uint16
+	C_port   uint16
+	S_port   uint16
 	Family   uint16
 	Protocol uint16
-	Saddr    uint32
-	Daddr    uint32
-	Type     int16
-	Netns    uint32
-	State    uint8
+	Type     uint16
+	Seq      uint16
+	OldState uint8
+	NewState uint8
+	SkId     uint64
+	C_ip     uint32
+	S_ip     uint32
+	C_ip6    [16]byte /* uint128 */
+	S_ip6    [16]byte /* uint128 */
+	NetNs    uint32
 }
 
 // loadTcpconn returns the embedded CollectionSpec for tcpconn.
@@ -70,24 +73,25 @@ type tcpconnProgramSpecs struct {
 	FentrySysAccept4     *ebpf.ProgramSpec `ebpf:"fentry___sys_accept4"`
 	FentrySysConnect     *ebpf.ProgramSpec `ebpf:"fentry___sys_connect"`
 	FentrySysConnectFile *ebpf.ProgramSpec `ebpf:"fentry___sys_connect_file"`
+	FentryTcpV4Connect   *ebpf.ProgramSpec `ebpf:"fentry_tcp_v4_connect"`
+	FentryTcpV6Connect   *ebpf.ProgramSpec `ebpf:"fentry_tcp_v6_connect"`
 	FexitSysAccept4      *ebpf.ProgramSpec `ebpf:"fexit___sys_accept4"`
 	FexitSysConnect      *ebpf.ProgramSpec `ebpf:"fexit___sys_connect"`
 	FexitDoAccept        *ebpf.ProgramSpec `ebpf:"fexit_do_accept"`
-	FexitTcpV4Connect    *ebpf.ProgramSpec `ebpf:"fexit_tcp_v4_connect"`
-	K_tcpConnect         *ebpf.ProgramSpec `ebpf:"k_tcp_connect"`
-	TpInetSockSetState   *ebpf.ProgramSpec `ebpf:"tp_inet_sock_set_state"`
+	FexitInetCskAccept   *ebpf.ProgramSpec `ebpf:"fexit_inet_csk_accept"`
+	K_setState           *ebpf.ProgramSpec `ebpf:"k_set_state"`
+	K_tcpV4DestroySock   *ebpf.ProgramSpec `ebpf:"k_tcp_v4_destroy_sock"`
+	RtpTcpDestroySock    *ebpf.ProgramSpec `ebpf:"rtp_tcp_destroy_sock"`
+	TpDestroySockFunc    *ebpf.ProgramSpec `ebpf:"tp_destroy_sock_func"`
 }
 
 // tcpconnMapSpecs contains maps before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnMapSpecs struct {
-	Egress    *ebpf.MapSpec `ebpf:"egress"`
-	Events    *ebpf.MapSpec `ebpf:"events"`
-	FdInfoMap *ebpf.MapSpec `ebpf:"fd_info_map"`
-	Ingress   *ebpf.MapSpec `ebpf:"ingress"`
-	Progs     *ebpf.MapSpec `ebpf:"progs"`
-	Socks     *ebpf.MapSpec `ebpf:"socks"`
+	Events       *ebpf.MapSpec `ebpf:"events"`
+	FdInfoMap    *ebpf.MapSpec `ebpf:"fd_info_map"`
+	SockLinkType *ebpf.MapSpec `ebpf:"sock_link_type"`
 }
 
 // tcpconnObjects contains all objects after they have been loaded into the kernel.
@@ -109,22 +113,16 @@ func (o *tcpconnObjects) Close() error {
 //
 // It can be passed to loadTcpconnObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnMaps struct {
-	Egress    *ebpf.Map `ebpf:"egress"`
-	Events    *ebpf.Map `ebpf:"events"`
-	FdInfoMap *ebpf.Map `ebpf:"fd_info_map"`
-	Ingress   *ebpf.Map `ebpf:"ingress"`
-	Progs     *ebpf.Map `ebpf:"progs"`
-	Socks     *ebpf.Map `ebpf:"socks"`
+	Events       *ebpf.Map `ebpf:"events"`
+	FdInfoMap    *ebpf.Map `ebpf:"fd_info_map"`
+	SockLinkType *ebpf.Map `ebpf:"sock_link_type"`
 }
 
 func (m *tcpconnMaps) Close() error {
 	return _TcpconnClose(
-		m.Egress,
 		m.Events,
 		m.FdInfoMap,
-		m.Ingress,
-		m.Progs,
-		m.Socks,
+		m.SockLinkType,
 	)
 }
 
@@ -135,12 +133,16 @@ type tcpconnPrograms struct {
 	FentrySysAccept4     *ebpf.Program `ebpf:"fentry___sys_accept4"`
 	FentrySysConnect     *ebpf.Program `ebpf:"fentry___sys_connect"`
 	FentrySysConnectFile *ebpf.Program `ebpf:"fentry___sys_connect_file"`
+	FentryTcpV4Connect   *ebpf.Program `ebpf:"fentry_tcp_v4_connect"`
+	FentryTcpV6Connect   *ebpf.Program `ebpf:"fentry_tcp_v6_connect"`
 	FexitSysAccept4      *ebpf.Program `ebpf:"fexit___sys_accept4"`
 	FexitSysConnect      *ebpf.Program `ebpf:"fexit___sys_connect"`
 	FexitDoAccept        *ebpf.Program `ebpf:"fexit_do_accept"`
-	FexitTcpV4Connect    *ebpf.Program `ebpf:"fexit_tcp_v4_connect"`
-	K_tcpConnect         *ebpf.Program `ebpf:"k_tcp_connect"`
-	TpInetSockSetState   *ebpf.Program `ebpf:"tp_inet_sock_set_state"`
+	FexitInetCskAccept   *ebpf.Program `ebpf:"fexit_inet_csk_accept"`
+	K_setState           *ebpf.Program `ebpf:"k_set_state"`
+	K_tcpV4DestroySock   *ebpf.Program `ebpf:"k_tcp_v4_destroy_sock"`
+	RtpTcpDestroySock    *ebpf.Program `ebpf:"rtp_tcp_destroy_sock"`
+	TpDestroySockFunc    *ebpf.Program `ebpf:"tp_destroy_sock_func"`
 }
 
 func (p *tcpconnPrograms) Close() error {
@@ -148,12 +150,16 @@ func (p *tcpconnPrograms) Close() error {
 		p.FentrySysAccept4,
 		p.FentrySysConnect,
 		p.FentrySysConnectFile,
+		p.FentryTcpV4Connect,
+		p.FentryTcpV6Connect,
 		p.FexitSysAccept4,
 		p.FexitSysConnect,
 		p.FexitDoAccept,
-		p.FexitTcpV4Connect,
-		p.K_tcpConnect,
-		p.TpInetSockSetState,
+		p.FexitInetCskAccept,
+		p.K_setState,
+		p.K_tcpV4DestroySock,
+		p.RtpTcpDestroySock,
+		p.TpDestroySockFunc,
 	)
 }
 

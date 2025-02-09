@@ -104,10 +104,7 @@ static __always_inline bool match_path_of_usk(struct unix_sock *usk, __u64 *path
     return __is_path_matched(path);
 }
 
-static __always_inline bool __is_sock_path_matched(struct unix_sock *usk, __u64 *path)
-{
-    return usk && match_path_of_usk(usk, path);
-}
+static __always_inline bool __is_sock_path_matched(struct unix_sock *usk, __u64 *path) { return usk && match_path_of_usk(usk, path); }
 
 static __always_inline void collect_data(void *ctx, struct packet *pkt, char *buf, __u32 len)
 {
@@ -168,9 +165,7 @@ static __noinline int usk_send_msg(void *ctx, struct socket *sock, struct msghdr
     //     return 0;
     // }
 
-    if ((__is_kernel_ge_6_0_0()
-            && (BPF_CORE_READ(iter, iter_type) != ITER_IOVEC || BPF_CORE_READ(iter, iov_offset) != 0))
-        || BPF_CORE_READ(iter, iov_offset) != 0) {
+    if ((__is_kernel_ge_6_0_0() && (BPF_CORE_READ(iter, iter_type) != ITER_IOVEC || BPF_CORE_READ(iter, iov_offset) != 0)) || BPF_CORE_READ(iter, iov_offset) != 0) {
         pkt->len = len;
         pkt->flags = SS_PACKET_F_ERR;
 
@@ -215,16 +210,10 @@ SEC("kprobe/unix_dgram_sendmsg")
 int kprobe__unix_dgram_sendmsg(struct pt_regs *ctx) { return __kprobe_unix_sendmsg(ctx); }
 
 SEC("fentry/unix_stream_sendmsg")
-int BPF_PROG(fentry__unix_stream_sendmsg, struct socket *sock, struct msghdr *msg, size_t len)
-{
-    return usk_send_msg((void *)(long)ctx, sock, msg, len);
-}
+int BPF_PROG(fentry__unix_stream_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return usk_send_msg((void *)(long)ctx, sock, msg, len); }
 
 SEC("fentry/unix_dgram_sendmsg")
-int BPF_PROG(fentry__unix_dgram_sendmsg, struct socket *sock, struct msghdr *msg, size_t len)
-{
-    return usk_send_msg((void *)(long)ctx, sock, msg, len);
-}
+int BPF_PROG(fentry__unix_dgram_sendmsg, struct socket *sock, struct msghdr *msg, size_t len) { return usk_send_msg((void *)(long)ctx, sock, msg, len); }
 
 //
 // SEC("kprobe/unix_stream_recvmsg")

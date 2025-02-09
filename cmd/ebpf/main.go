@@ -23,9 +23,9 @@ func main() {
 	if err := rlimit.RemoveMemlock(); err != nil {
 		panic(errors.WithMessage(err, "failed to remove memory limit for process"))
 	}
-	//go nftables.Run(ctx)
-	//iptables.Run(ctx)
-	// 	go xdp.Run(ctx)
+	// 	go nftables.Run(ctx)
+	// 	go iptables.Run(ctx)
+	//  go xdp.Run(ctx)
 	go tcp.Run(ctx)
 	<-ctx.Done()
 }

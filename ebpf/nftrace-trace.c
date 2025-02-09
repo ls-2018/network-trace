@@ -18,8 +18,7 @@ SEC("kprobe/__nft_trace_packet")
 #if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
 int BPF_KPROBE(kprobe_nft_trace_packet, struct nft_traceinfo *info)
 #else
-int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict,
-    const struct nft_rule_dp *rule, struct nft_traceinfo *info)
+int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict, const struct nft_rule_dp *rule, struct nft_traceinfo *info)
 #endif
 {
     char comm[60];

@@ -10,8 +10,7 @@ struct {
     __uint(max_entries, 1024);
 } skb_tracer_ipt SEC(".maps");
 
-static __always_inline bool do_trace_skb(
-    struct event_t *event, struct config *cfg, struct pt_regs *ctx, struct sk_buff *skb)
+static __always_inline bool do_trace_skb(struct event_t *event, struct config *cfg, struct pt_regs *ctx, struct sk_buff *skb)
 {
 
     if (filter_pid(cfg) || filter_netns(cfg, skb) || filter_l3_and_l4_info(cfg, skb))

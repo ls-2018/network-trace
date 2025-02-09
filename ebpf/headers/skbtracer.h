@@ -49,12 +49,12 @@ struct {
     __uint(max_entries, 1);
 } skbtracer_cfg SEC(".maps");
 
-#define GET_CFG()                                                                                                      \
-    u32 index = 0;                                                                                                     \
-    struct config *cfg = NULL;                                                                                         \
-    cfg = bpf_map_lookup_elem(&skbtracer_cfg, &index);                                                                 \
-    if (cfg == NULL)                                                                                                   \
-        return 0;                                                                                                      \
+#define GET_CFG()                                      \
+    u32 index = 0;                                     \
+    struct config *cfg = NULL;                         \
+    cfg = bpf_map_lookup_elem(&skbtracer_cfg, &index); \
+    if (cfg == NULL)                                   \
+        return 0;                                      \
     cfg->ip = bpf_htonl(cfg->ip)
 
 union addr {
@@ -173,10 +173,10 @@ static __always_inline struct event_t *get_event_buf(void)
     return ev;
 }
 
-#define GET_EVENT_BUF()                                                                                                \
-    struct event_t *event;                                                                                             \
-    event = get_event_buf();                                                                                           \
-    if (event == NULL)                                                                                                 \
+#define GET_EVENT_BUF()      \
+    struct event_t *event;   \
+    event = get_event_buf(); \
+    if (event == NULL)       \
     return 0
 
 #define SKBTRACER_EVENT_IF 0x01
@@ -194,13 +194,13 @@ struct {
 static __always_inline void bpf_strncpy(char *dst, const char *src, int n)
 {
     int i = 0, j;
-#define CPY(n)                                                                                                         \
-    do {                                                                                                               \
-        for (; i < n; i++) {                                                                                           \
-            if (src[i] == 0)                                                                                           \
-                return;                                                                                                \
-            dst[i] = src[i];                                                                                           \
-        }                                                                                                              \
+#define CPY(n)               \
+    do {                     \
+        for (; i < n; i++) { \
+            if (src[i] == 0) \
+                return;      \
+            dst[i] = src[i]; \
+        }                    \
     } while (0)
 
     for (j = 10; j < 64; j += 10)
@@ -376,8 +376,7 @@ static __always_inline void set_icmp_info(struct sk_buff *skb, struct icmp_info_
     icmp_info->icmpseq = bpf_ntohs(ih.un.echo.sequence);
 }
 
-static __always_inline void set_iptables_info(
-    struct xt_table *table, const struct nf_hook_state *state, u32 verdict, u64 delay, struct iptables_info_t *ipt_info)
+static __always_inline void set_iptables_info(struct xt_table *table, const struct nf_hook_state *state, u32 verdict, u64 delay, struct iptables_info_t *ipt_info)
 {
     bpf_probe_read(&ipt_info->tablename, XT_TABLE_MAXNAMELEN, &table->name);
     ipt_info->hook = BPF_CORE_READ(state, hook);
