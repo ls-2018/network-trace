@@ -81,7 +81,7 @@ BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
 # 每行字符的长度
-ColumnLimit: 0
+ColumnLimit: 240
 CommentPragmas: "^ IWYU pragma:"
 QualifierAlignment: Leave
 CompactNamespaces: false
@@ -128,7 +128,6 @@ IndentCaseBlocks: false
 IndentGotoLabels: true
 IndentPPDirectives: None
 IndentExternBlock: AfterExternBlock
-IndentRequires: false
 # 缩进宽度
 IndentWidth: 4
 IndentWrappedFunctionNames: false

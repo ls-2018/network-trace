@@ -86,7 +86,7 @@ func Run(ctx context.Context, opt options.Options) {
 				ev.Id,
 				nftrace.TraceType(ev.NftInfo.Type),
 				nftrace.FamilyTable(ev.Family),
-				unix.ByteSliceToString(ev.NftInfo.TableName[:]),
+				unix.ByteSliceToString([]byte(ev.NftInfo.TableName[:])),
 				ev.NftInfo.TableHandle,
 				unix.ByteSliceToString(ev.NftInfo.ChainName[:]),
 				ev.NftInfo.ChainHandle,

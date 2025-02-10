@@ -25,7 +25,7 @@ import (
 	"unsafe"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types -type event_t tcpconn ./../../ebpf/tcp-connecting.c -- -D__TARGET_ARCH_x86 ${CUSTOM_DEFINE} -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types -type event_t tcpconn ./../../ebpf/tcp-trace.c -- -D__TARGET_ARCH_x86 ${CUSTOM_DEFINE} -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 
 type Func struct {
 	SectionName    string
@@ -175,7 +175,7 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 			continue
 		}
 		var direct = "<---->"
-		switch dump.Agent(ev.Type) {
+		switch dump.Agent(ev.ConnInfo.Role) {
 		case dump.LinkRoleUnknown:
 		case dump.LinkRoleServer:
 			direct = "    ->"
@@ -186,8 +186,8 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 			"process❓:%-20s pid❓:%-6d skId❓:%-20d socketId❓:%-20d %-22s%s%-22s state: %-14s -> %-14s family:%-8s proto:%s ns:%d role:%-6s Seq:%d",
 			goebpf.NullTerminatedStringToString(ev.Process.Name[:]), // 不准
 			ev.Process.Pid, // 不准
-			ev.SkId,        // 不准
-			ev.SocketId,
+			ev.SkInfo.SkId, // 不准
+			ev.SocketInfo.SocketId,
 			fmt.Sprintf("%s:%d", s, ev.ConnInfo.C_port),
 			direct,
 			fmt.Sprintf("%s:%d", d, ev.ConnInfo.S_port),
@@ -196,7 +196,7 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 			dump.AddressFamily(ev.ConnInfo.Family).String(),
 			dump.IpProto(ev.ConnInfo.Protocol).String(),
 			ev.ConnInfo.NetNs,
-			dump.Agent(ev.Type).String(),
+			dump.Agent(ev.ConnInfo.Role).String(),
 			ev.ConnInfo.Seq,
 		)
 		select {

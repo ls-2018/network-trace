@@ -1,5 +1,5 @@
-#ifndef __BPF_ALL_H_
-#define __BPF_ALL_H_
+#ifndef BPF_ALL_H_
+#define BPF_ALL_H_
 
 #include "vmlinux.h"
 
@@ -18,6 +18,6 @@
 
 #define ctx_ptr(ctx, mem) (void *)(unsigned long)ctx->mem
 
-char _license[] SEC("license") = "GPL";
+char __license[] SEC("license") = "GPL";
 
-#endif // __BPF_ALL_H_
+#endif // BPF_ALL_H_

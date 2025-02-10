@@ -71,12 +71,7 @@ struct nft_pktinfo {
     //    u16 inneroff;
 } __attribute__((preserve_access_index));
 
-enum nft_chain_types {
-    NFT_CHAIN_T_DEFAULT = 0,
-    NFT_CHAIN_T_ROUTE,
-    NFT_CHAIN_T_NAT,
-    NFT_CHAIN_T_MAX
-};
+enum nft_chain_types { NFT_CHAIN_T_DEFAULT = 0, NFT_CHAIN_T_ROUTE, NFT_CHAIN_T_NAT, NFT_CHAIN_T_MAX };
 
 struct nft_chain_type {
     const char *name;

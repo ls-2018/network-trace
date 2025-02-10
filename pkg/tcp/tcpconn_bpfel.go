@@ -13,9 +13,41 @@ import (
 )
 
 type tcpconnEventT struct {
-	Type     uint16
-	SkId     uint64
-	SocketId uint64
+	PrintStackId int64
+	TsNs         uint64
+	Meta         struct {
+		Addrs    uint64
+		Dport    uint16
+		PortNum  uint16
+		Netns    uint32
+		Family   uint16
+		Protocol uint16
+	}
+	Skc struct {
+		State        uint8
+		ReusePort    uint8
+		Pad          [2]uint8
+		BoundIfindex uint32
+	}
+	SkInfo struct {
+		SkId         uint64
+		RxDstIfindex uint32
+		BacklogLen   uint32
+		RcvBuff      uint32
+		SndBuff      uint32
+		Priority     uint32
+		Mark         uint32
+		Type         uint16
+		Pad          uint16
+	}
+	SocketInfo struct {
+		SocketId  uint64
+		State     uint16
+		Type      uint16
+		Pad       uint32
+		FileInode uint64
+		Flags     uint64
+	}
 	ConnInfo struct {
 		C_mac    [6]uint8
 		D_mac    [6]uint8
@@ -31,9 +63,11 @@ type tcpconnEventT struct {
 		Seq      uint16
 		OldState uint8
 		NewState uint8
+		Role     uint8
+		_        [3]byte
 	}
 	Process struct {
-		Name [64]int8
+		Name [64]uint8
 		Pid  uint64
 		Tgid uint64
 	}
@@ -92,6 +126,7 @@ type tcpconnProgramSpecs struct {
 	K_setState           *ebpf.ProgramSpec `ebpf:"k_set_state"`
 	K_tcpV4DestroySock   *ebpf.ProgramSpec `ebpf:"k_tcp_v4_destroy_sock"`
 	RtpTcpDestroySock    *ebpf.ProgramSpec `ebpf:"rtp_tcp_destroy_sock"`
+	TcpCloseEntry        *ebpf.ProgramSpec `ebpf:"tcp_close_entry"`
 	TpDestroySockFunc    *ebpf.ProgramSpec `ebpf:"tp_destroy_sock_func"`
 }
 
@@ -99,9 +134,10 @@ type tcpconnProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tcpconnMapSpecs struct {
-	Events       *ebpf.MapSpec `ebpf:"events"`
-	FdInfoMap    *ebpf.MapSpec `ebpf:"fd_info_map"`
-	SockLinkType *ebpf.MapSpec `ebpf:"sock_link_type"`
+	Events        *ebpf.MapSpec `ebpf:"events"`
+	FdInfoMap     *ebpf.MapSpec `ebpf:"fd_info_map"`
+	PrintStackMap *ebpf.MapSpec `ebpf:"print_stack_map"`
+	SockLinkType  *ebpf.MapSpec `ebpf:"sock_link_type"`
 }
 
 // tcpconnObjects contains all objects after they have been loaded into the kernel.
@@ -123,15 +159,17 @@ func (o *tcpconnObjects) Close() error {
 //
 // It can be passed to loadTcpconnObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tcpconnMaps struct {
-	Events       *ebpf.Map `ebpf:"events"`
-	FdInfoMap    *ebpf.Map `ebpf:"fd_info_map"`
-	SockLinkType *ebpf.Map `ebpf:"sock_link_type"`
+	Events        *ebpf.Map `ebpf:"events"`
+	FdInfoMap     *ebpf.Map `ebpf:"fd_info_map"`
+	PrintStackMap *ebpf.Map `ebpf:"print_stack_map"`
+	SockLinkType  *ebpf.Map `ebpf:"sock_link_type"`
 }
 
 func (m *tcpconnMaps) Close() error {
 	return _TcpconnClose(
 		m.Events,
 		m.FdInfoMap,
+		m.PrintStackMap,
 		m.SockLinkType,
 	)
 }
@@ -152,6 +190,7 @@ type tcpconnPrograms struct {
 	K_setState           *ebpf.Program `ebpf:"k_set_state"`
 	K_tcpV4DestroySock   *ebpf.Program `ebpf:"k_tcp_v4_destroy_sock"`
 	RtpTcpDestroySock    *ebpf.Program `ebpf:"rtp_tcp_destroy_sock"`
+	TcpCloseEntry        *ebpf.Program `ebpf:"tcp_close_entry"`
 	TpDestroySockFunc    *ebpf.Program `ebpf:"tp_destroy_sock_func"`
 }
 
@@ -169,6 +208,7 @@ func (p *tcpconnPrograms) Close() error {
 		p.K_setState,
 		p.K_tcpV4DestroySock,
 		p.RtpTcpDestroySock,
+		p.TcpCloseEntry,
 		p.TpDestroySockFunc,
 	)
 }

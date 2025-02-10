@@ -25,13 +25,13 @@ type nftabletraceTraceInfo struct {
 	OifName [16]uint8
 	NftInfo struct {
 		Type        uint32
-		TableName   [64]int8
+		TableName   [64]uint8
 		_           [4]byte
 		TableHandle uint64
-		ChainName   [64]int8
+		ChainName   [64]uint8
 		ChainHandle uint64
 		RuleHandle  uint64
-		JumpTarget  [64]int8
+		JumpTarget  [64]uint8
 		Verdict     uint32
 		NfProto     uint8
 		Policy      uint8
@@ -54,12 +54,13 @@ type nftabletraceTraceInfo struct {
 		Seq      uint16
 		OldState uint8
 		NewState uint8
+		Role     uint8
+		_        [3]byte
 	}
-	_           [4]byte
 	Time        uint64
 	Counter     uint64
 	ProcessInfo struct {
-		Name [64]int8
+		Name [64]uint8
 		Pid  uint64
 		Tgid uint64
 	}

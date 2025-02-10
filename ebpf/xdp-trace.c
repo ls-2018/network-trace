@@ -42,7 +42,6 @@ static __always_inline void parse_ipv4_src_addr(struct xdp_md *ctx)
         return;
 
     *val = MAGIC;
-    return;
 }
 
 SEC("xdp")
@@ -86,10 +85,10 @@ int trace_packets(struct xdp_md *ctx)
                 break;
         }
 
-        //        ct.s_ip = bpf_ntohl(iph->saddr);
-        //        ct.d_ip = bpf_ntohl(iph->daddr);
-        //        ct.s_port = bpf_ntohs(src_port);
-        //        ct.d_port = bpf_ntohs(dest_port);
+        ct.s_ip = bpf_ntohl(iph->saddr);
+        ct.d_ip = bpf_ntohl(iph->daddr);
+        ct.s_port = bpf_ntohs(src_port);
+        ct.d_port = bpf_ntohs(dest_port);
     };
     //    bpf_debug_printk("eth proto : %d ", bpf_ntohs(eth->h_proto)); // ETH_P_IP
     //    bpf_debug_printk("iphdr      tos: %d", iph->tos);

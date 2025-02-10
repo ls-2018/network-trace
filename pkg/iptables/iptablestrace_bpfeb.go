@@ -64,9 +64,10 @@ type iptablestraceProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type iptablestraceMapSpecs struct {
-	EventBuf       *ebpf.MapSpec `ebpf:"event_buf"`
+	Events         *ebpf.MapSpec `ebpf:"events"`
 	SkbtracerEvent *ebpf.MapSpec `ebpf:"skbtracer_event"`
 	SkbtracerIpt   *ebpf.MapSpec `ebpf:"skbtracer_ipt"`
+	SkbtracerStack *ebpf.MapSpec `ebpf:"skbtracer_stack"`
 }
 
 // iptablestraceObjects contains all objects after they have been loaded into the kernel.
@@ -88,16 +89,18 @@ func (o *iptablestraceObjects) Close() error {
 //
 // It can be passed to loadIptablestraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type iptablestraceMaps struct {
-	EventBuf       *ebpf.Map `ebpf:"event_buf"`
+	Events         *ebpf.Map `ebpf:"events"`
 	SkbtracerEvent *ebpf.Map `ebpf:"skbtracer_event"`
 	SkbtracerIpt   *ebpf.Map `ebpf:"skbtracer_ipt"`
+	SkbtracerStack *ebpf.Map `ebpf:"skbtracer_stack"`
 }
 
 func (m *iptablestraceMaps) Close() error {
 	return _IptablestraceClose(
-		m.EventBuf,
+		m.Events,
 		m.SkbtracerEvent,
 		m.SkbtracerIpt,
+		m.SkbtracerStack,
 	)
 }
 

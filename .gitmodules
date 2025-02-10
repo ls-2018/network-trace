@@ -1,3 +1,6 @@
 [submodule "3rd/training"]
 	path = 3rd/training
 	url = https://github.com/chengyli/training.git
+[submodule "3rd/go-nftables-demo"]
+	path = 3rd/go-nftables-demo
+	url = https://github.com/ymm135/go-nftables-demo.git

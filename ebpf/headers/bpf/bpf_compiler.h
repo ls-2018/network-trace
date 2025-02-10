@@ -37,21 +37,21 @@ static __always_inline void bpf_barrier(void)
 /* {READ,WRITE}_ONCE() with verifier workaround via bpf_barrier(). */
 
 #ifndef READ_ONCE
-#define READ_ONCE(X)                      \
-    ({                                    \
-        typeof(X) __val = __READ_ONCE(X); \
-        bpf_barrier();                    \
-        __val;                            \
+#define READ_ONCE(X)                                                                                                                                                                                                                           \
+    ({                                                                                                                                                                                                                                         \
+        typeof(X) __val = __READ_ONCE(X);                                                                                                                                                                                                      \
+        bpf_barrier();                                                                                                                                                                                                                         \
+        __val;                                                                                                                                                                                                                                 \
     })
 #endif
 
 #ifndef WRITE_ONCE
-#define WRITE_ONCE(X, V)        \
-    ({                          \
-        typeof(X) __val = (V);  \
-        __WRITE_ONCE(X, __val); \
-        bpf_barrier();          \
-        __val;                  \
+#define WRITE_ONCE(X, V)                                                                                                                                                                                                                       \
+    ({                                                                                                                                                                                                                                         \
+        typeof(X) __val = (V);                                                                                                                                                                                                                 \
+        __WRITE_ONCE(X, __val);                                                                                                                                                                                                                \
+        bpf_barrier();                                                                                                                                                                                                                         \
+        __val;                                                                                                                                                                                                                                 \
     })
 #endif
 

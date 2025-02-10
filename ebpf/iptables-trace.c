@@ -1,6 +1,24 @@
 #include "bpf_all.h"
-#include "iptables_trace.h"
 #include "define/if_ether.h"
+#include "define/netfiler.h"
+#include "nftrace.h"
+#include "skb_helpers.h"
+
+#define SKBTRACER_EVENT_IF 0x01
+#define SKBTRACER_EVENT_IPTABLE 0x02
+#define SKBTRACER_EVENT_IPTABLES_TRACE 0x04
+#define SKBTRACER_EVENT_NFT_CHAIN 0x08
+#define IFNAMSIZ 16
+#define ADDRSIZE 16
+#define MAC_HEADER_SIZE 14
+#define XT_TABLE_MAXNAMELEN 32
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u64);
+    __type(value, struct ipt_do_table_args);
+    __uint(max_entries, 1024);
+} skbtracer_ipt SEC(".maps");
 
 struct ipt_do_table_args {
     struct sk_buff *skb;
@@ -15,13 +33,8 @@ struct {
     __uint(max_entries, 1 << 12);
 } skbtracer_event SEC(".maps");
 
-/**
- * Common tracepoint handler. Detect IPv4/IPv6 and
- * emit event with address, interface and namespace.
- */
-static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, struct sk_buff *skb)
+static void do_trace_skb(struct event_t *event, struct pt_regs *ctx, struct sk_buff *skb)
 {
-
     event->flags |= SKBTRACER_EVENT_IF;
     set_event_info(skb, event);
     set_pkt_info(skb, &event->pkt_info);
@@ -35,8 +48,6 @@ static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, st
     } else if (ip_version == 6) {
         event->l2_info.l3_proto = ETH_P_IPV6;
         set_ipv6_info(skb, &event->l3_info);
-    } else {
-        return false;
     }
 
     u8 l4_proto = event->l3_info.l4_proto;
@@ -46,20 +57,13 @@ static __inline bool do_trace_skb(struct event_t *event, struct pt_regs *ctx, st
         set_udp_info(skb, &event->l4_info);
     } else if (l4_proto == IPPROTO_ICMP || l4_proto == IPPROTO_ICMPV6) {
         set_icmp_info(skb, &event->icmp_info);
-    } else {
-        return false;
     }
-
-    return true;
 }
 
 static __noinline int ipt_do_table_in(struct pt_regs *ctx, struct sk_buff *skb, const struct nf_hook_state *state, struct xt_table *table)
 {
     u64 pid_tgid;
     pid_tgid = bpf_get_current_pid_tgid();
-
-    if (filter_pid(pid_tgid >> 32) || filter_netns(skb) || filter_l3_and_l4_info(skb))
-        return false;
 
     struct ipt_do_table_args args = {
         .skb = skb,
@@ -73,6 +77,11 @@ static __noinline int ipt_do_table_in(struct pt_regs *ctx, struct sk_buff *skb, 
     return BPF_OK;
 };
 
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1024 * 1024);
+} events SEC(".maps");
+
 static __inline int __ipt_do_table_trace(struct pt_regs *ctx, u8 pf, unsigned int hooknum, struct sk_buff *skb, struct net_device *in, struct net_device *out, char *tablename, char *chainname, unsigned int rulenum)
 {
     u64 pid_tgid = bpf_get_current_pid_tgid();
@@ -80,19 +89,18 @@ static __inline int __ipt_do_table_trace(struct pt_regs *ctx, u8 pf, unsigned in
     if (!val)
         return BPF_OK;
 
-    struct event_t *event = GET_EVENT_BUF();
-    if (!event)
+    struct event_t *event;
+    int _err = CLEAN_ERR_INIT;
+    int *err = &_err;
+    guard_ring_buf(&events, event, err);
+    if (!event) {
         return BPF_OK;
-
+    }
     __builtin_memset(event, 0, sizeof(*event));
-
-    if (!do_trace_skb(event, ctx, skb))
-        return BPF_OK;
 
     event->flags |= SKBTRACER_EVENT_IPTABLES_TRACE;
 
     struct iptables_trace_t *trace = &event->trace_info;
-
     read_dev_name((char *)&trace->in, in);
     read_dev_name((char *)&trace->out, out);
     bpf_probe_read_kernel_str(&trace->tablename, XT_TABLE_MAXNAMELEN, tablename);
@@ -119,14 +127,16 @@ static __noinline int ipt_do_table_out(struct pt_regs *ctx, uint verdict)
     if (args == NULL)
         return BPF_OK;
 
-    struct event_t *event = GET_EVENT_BUF();
-    if (!event)
+    struct event_t *event;
+    int _err = CLEAN_ERR_INIT;
+    int *err = &_err;
+    guard_ring_buf(&events, event, err);
+    if (!event) {
         return BPF_OK;
-
+    }
     __builtin_memset(event, 0, sizeof(*event));
 
-    if (!do_trace_skb(event, ctx, args->skb))
-        return BPF_OK;
+    do_trace_skb(event, ctx, args->skb);
 
     event->flags |= SKBTRACER_EVENT_IPTABLE;
 
@@ -168,7 +178,6 @@ int BPF_KRETPROBE(kr_ipt_do_table, uint ret) { return ipt_do_table_out(ctx, ret)
 SEC("kprobe/nf_log_trace")
 int BPF_KPROBE(k_nf_log_trace, struct net *net, u_int8_t pf, unsigned int hooknum, struct sk_buff *skb, struct net_device *in)
 {
-
     struct net_device *out = (void *)regs_get_nth_argument(ctx, 5);
     char *tablename = (void *)regs_get_nth_argument(ctx, 8);
     char *chainname = (void *)regs_get_nth_argument(ctx, 9);
@@ -186,9 +195,6 @@ int BPF_KPROBE(k_nft_do_chain, struct nft_pktinfo *pkt, void *priv)
 
     pid_tgid = bpf_get_current_pid_tgid();
     bpf_probe_read_kernel(&skb, sizeof(skb), (void *)pkt);
-
-    if (filter_pid(pid_tgid >> 32) || filter_netns(skb) || filter_l3_and_l4_info(skb))
-        return false;
 
     struct ipt_do_table_args args = {
         .skb = skb,
@@ -208,29 +214,28 @@ int BPF_KRETPROBE(kr_nft_do_chain, uint verdict)
     struct nft_trace_t *trace;
     struct nft_table *table;
     struct nft_chain *chain;
-    struct event_t *event;
-    u64 ipt_delay;
-    u64 pid_tgid;
+
     char *name;
 
-    pid_tgid = bpf_get_current_pid_tgid();
+    u64 pid_tgid = bpf_get_current_pid_tgid();
     args = bpf_map_lookup_and_delete(&skbtracer_ipt, &pid_tgid);
     if (!args)
         return BPF_OK;
 
-    event = GET_EVENT_BUF();
-    if (!event)
+    struct event_t *event;
+    int _err = CLEAN_ERR_INIT;
+    int *err = &_err;
+    guard_ring_buf(&events, event, err);
+    if (!event) {
         return BPF_OK;
-
+    }
     __builtin_memset(event, 0, sizeof(*event));
-
-    if (!do_trace_skb(event, ctx, args->skb))
-        return BPF_OK;
+    do_trace_skb(event, ctx, args->skb);
 
     event->flags |= SKBTRACER_EVENT_NFT_CHAIN;
 
     event->start_ns = args->start_ns;
-    ipt_delay = bpf_ktime_get_ns() - args->start_ns;
+    u64 ipt_delay = bpf_ktime_get_ns() - args->start_ns;
 
     chain = args->chain;
     trace = &event->nft_info;

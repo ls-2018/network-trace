@@ -1,5 +1,4 @@
 #include "trace.h"
-#include "define/socket.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -23,74 +22,29 @@ struct state_info {
 };
 
 struct event_t {
-    __u16 type;
-    __u64 sk_id;
-    __u64 socket_id;
+    s64 print_stack_id;
+    __u64 ts_ns;
+    struct sk_meta meta;
+    struct sk_common skc;
+    struct trace_sk_info sk_info;
+    struct trace_socket_info socket_info;
     struct trace_conn_info conn_info;
     struct trace_process_info process;
-} __attribute__((packed));
+};
+
+const struct event_t *unused __attribute__((unused));
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 1024 * 1024);
 } events SEC(".maps");
 
-
-
-// static inline __attribute__((always_inline)) unsigned __int128 bpf_swab128(unsigned __int128 x)
-// {
-//     uint64_t high = x >> 64;               // 获取高 64 位
-//     uint64_t low = x & 0xFFFFFFFFFFFFFFFF; // 获取低 64 位
-//
-//     // 交换每个 64 位部分的字节顺序
-//     high = __builtin_bswap64(high);
-//     low = __builtin_bswap64(low);
-//
-//     // 将低 64 位放到高 64 位，反之亦然
-//     return ((unsigned __int128)low << 64) | high;
-// }
-
-static __noinline void copy_event_from_sk(struct sock *sk, struct event_t *event, const __u8 type, int *err)
-{
-    __u32 skc_rcv_s_addr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    if (bpf_ntohl(skc_rcv_s_addr) <= 0) {
-        *err = CLEAN_ERR_FAILED;
-        return;
-    }
-
-    __u32 skc_d_port = BPF_CORE_READ(sk, __sk_common.skc_dport);
-    __u32 skc_s_port = BPF_CORE_READ(sk, __sk_common.skc_num);
-    event->type = type;
-    switch (type) {
-
-        case LINK_ROLE_SERVER:
-            event->conn_info.s_port = skc_s_port;
-            event->conn_info.c_port = bpf_ntohs(skc_d_port);
-            bpf_probe_read_kernel(&event->conn_info.s_ip, sizeof(event->conn_info.s_ip), &sk->__sk_common.skc_rcv_saddr);
-            bpf_probe_read_kernel(&event->conn_info.c_ip, sizeof(event->conn_info.c_ip), &sk->__sk_common.skc_daddr);
-
-            /* family == AF_INET6 */
-            bpf_probe_read_kernel(&event->conn_info.s_ip6, sizeof(event->conn_info.s_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-            bpf_probe_read_kernel(&event->conn_info.c_ip6, sizeof(event->conn_info.c_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
-            break;
-
-        case LINK_ROLE_UNKNOWN:
-        case LINK_ROLE_CLIENT:
-            event->conn_info.c_port = skc_s_port;
-            event->conn_info.s_port = bpf_ntohs(skc_d_port);
-            bpf_probe_read_kernel(&event->conn_info.c_ip, sizeof(event->conn_info.c_ip), &sk->__sk_common.skc_rcv_saddr);
-            bpf_probe_read_kernel(&event->conn_info.s_ip, sizeof(event->conn_info.s_ip), &sk->__sk_common.skc_daddr);
-            /* family == AF_INET6 */
-            bpf_probe_read_kernel(&event->conn_info.c_ip6, sizeof(event->conn_info.c_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-            bpf_probe_read_kernel(&event->conn_info.s_ip6, sizeof(event->conn_info.s_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
-            break;
-        default:
-            break;
-    }
-
-    event->conn_info.s_ip = bpf_ntohl(event->conn_info.s_ip);
-    event->conn_info.c_ip = bpf_ntohl(event->conn_info.c_ip);
-}
+struct {
+    __uint(type, BPF_MAP_TYPE_STACK_TRACE);
+    __uint(max_entries, 256);
+    __uint(key_size, sizeof(u32));
+    __uint(value_size, MAX_STACK_DEPTH * sizeof(u64));
+} print_stack_map SEC(".maps");
 
 static __noinline void handle_new_connection(void *ctx, struct sock *sk, const struct state_info *states)
 {
@@ -101,32 +55,21 @@ static __noinline void handle_new_connection(void *ctx, struct sock *sk, const s
     if (!event) {
         return;
     }
-    struct trace_process_info *p = &event->process;
-    fill_process_info(p);
-
-    if (sk) {
-        const __u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
-        if (family != AF_INET && family != AF_INET6) {
-            return;
-        }
-
-        const u16 protocol = BPF_CORE_READ(sk, sk_protocol);
-        if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP && protocol != IPPROTO_ICMP) {
-            return;
-        }
-        event->sk_id = (u64)sk;
-        event->socket_id = (u64)BPF_CORE_READ(sk, sk_socket);
-        event->conn_info.family = family;
-        event->conn_info.protocol = protocol;
-        event->conn_info.net_ns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
+    __builtin_memset(event, 0, sizeof(*event));
+    fill_process_info(&event->process);
+    set_sock_info(sk, &event->socket_info);
+    set_sk_info(sk, &event->sk_info);
+//    todo
+//    event->print_stack_id = bpf_get_stackid(ctx, &print_stack_map, BPF_F_FAST_STACK_CMP);
+    event->ts_ns = bpf_ktime_get_ns();
+    do {
+        set_conn_info(sk, &event->conn_info, states->role, err);
+        event->conn_info.role = states->role;
         event->conn_info.seq = states->seq;
         event->conn_info.old_state = states->old_state;
         event->conn_info.new_state = states->new_state;
+    } while (false);
 
-        copy_event_from_sk(sk, event, states->role, err);
-    } else {
-        return;
-    }
     if (*err == CLEAN_ERR_INIT) {
         *err = CLEAN_ERR_SUCCESS;
     }
@@ -198,7 +141,6 @@ int BPF_PROG(fentry___sys_connect, int fd)
 SEC("fentry/__sys_connect_file")
 int BPF_PROG(fentry___sys_connect_file, struct file *file)
 {
-
     struct tcp_fd_info *fd_info = find_fd_info();
     if (!fd_info)
         return BPF_OK;
@@ -444,6 +386,14 @@ int tp_destroy_sock_func(struct trace_event_raw_tcp_event_sk *ctx)
         return 0; // 如果没有有效的 sock 指针，返回
     }
 
+    const u64 id = (u64)(void *)sk;
+    bpf_map_delete_elem(&sock_link_type, &id);
+    return 0;
+}
+
+SEC("kprobe/tcp_close")
+int BPF_KPROBE(tcp_close_entry, struct sock *sk, long timeout)
+{
     const u64 id = (u64)(void *)sk;
     bpf_map_delete_elem(&sock_link_type, &id);
     return 0;

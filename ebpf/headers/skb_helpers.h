@@ -2,18 +2,13 @@
 #define __SKB_HELPERS_H__
 
 #include "bpf_all.h"
-#include "define/icmp.h"
-#include "define/netfiler.h"
 #include "string.h"
 #include "nftrace.h"
-
 #define IFNAMSIZ 16
 #define ADDRSIZE 16
 #define MAC_HEADER_SIZE 14
 #define FUNCNAME_MAX_LEN 32
 #define XT_TABLE_MAXNAMELEN 32
-
-#define NULL ((void *)0)
 #define MAX_STACKDEPTH 50
 
 union addr {
@@ -25,7 +20,7 @@ union addr {
     } v6addr;
 
     u64 pad[2];
-};
+} __attribute__((packed));
 
 struct l2_info_t {
     u8 dest_mac[6];
@@ -40,21 +35,21 @@ struct l3_info_t {
     u8 ip_version;
     u8 l4_proto;
     u8 pad[4];
-};
+} __attribute__((packed));
 
 struct l4_info_t {
     u16 sport;
     u16 dport;
     u16 tcpflags;
     u8 pad[2];
-};
+} __attribute__((packed));
 
 struct icmp_info_t {
     u16 icmpid;
     u16 icmpseq;
     u8 icmptype;
     u8 pad[3];
-};
+} __attribute__((packed));
 
 struct iptables_info_t {
     char tablename[XT_TABLE_MAXNAMELEN];
@@ -63,17 +58,7 @@ struct iptables_info_t {
     u64 delay;
     u8 pf;
     u8 pad[7];
-};
-
-struct pkt_info_t {
-    char ifname[IFNAMSIZ];
-    u32 len;
-    u32 cpu;
-    u32 pid;
-    u32 netns;
-    u8 pkt_type; // skb->pkt_type
-    u8 pad[7];
-};
+} __attribute__((packed));
 
 struct iptables_trace_t {
     char in[IFNAMSIZ];
@@ -91,6 +76,16 @@ struct nft_trace_t {
     char chainname[XT_TABLE_MAXNAMELEN];
     u64 delay;
     u32 verdict;
+} __attribute__((packed));
+
+struct pkt_info_t {
+    char ifname[IFNAMSIZ];
+    u32 len;
+    u32 cpu;
+    u32 pid;
+    u32 netns;
+    u8 pkt_type; // skb->pkt_type
+    u8 pad[7];
 } __attribute__((packed));
 
 struct event_t {
@@ -111,8 +106,20 @@ struct event_t {
         struct iptables_trace_t trace_info;
         struct nft_trace_t nft_info;
     };
-} __attribute__((packed));
+} ;
+union ___skb_pkt_type {
+    u8 value;
 
+    struct {
+        u8 __pkt_type_offset[0];
+        u8 pkt_type : 3;
+        u8 pfmemalloc : 1;
+        u8 ignore_df : 1;
+
+        u8 nf_trace : 1;
+        u8 ip_summed : 2;
+    };
+};
 #define SKBTRACER_EVENT_IF 0x01
 #define SKBTRACER_EVENT_IPTABLE 0x02
 #define SKBTRACER_EVENT_DROP 0x04
@@ -125,9 +132,7 @@ struct {
     __uint(max_entries, 256);
 } skbtracer_stack SEC(".maps");
 
-
-
-static __always_inline u32 get_netns(struct sk_buff *skb)
+static __always_inline u32 get_netns_skb(struct sk_buff *skb)
 {
     u32 netns;
 
@@ -145,20 +150,6 @@ static __always_inline u32 get_netns(struct sk_buff *skb)
 
     return netns;
 }
-
-union ___skb_pkt_type {
-    u8 value;
-
-    struct {
-        u8 __pkt_type_offset[0];
-        u8 pkt_type : 3;
-        u8 pfmemalloc : 1;
-        u8 ignore_df : 1;
-
-        u8 nf_trace : 1;
-        u8 ip_summed : 2;
-    };
-};
 
 static __always_inline u8 get_pkt_type(struct sk_buff *skb)
 {
@@ -222,26 +213,28 @@ static __always_inline void set_callstack(struct event_t *event, struct pt_regs 
     event->kernel_stack_id = bpf_get_stackid(ctx, &skbtracer_stack, 0);
     return;
 }
+
 static __always_inline void read_dev_name(char *dst, const struct net_device *dev)
 {
     dst[0] = 0;
     if (dev)
         bpf_probe_read_kernel_str(dst, IFNAMSIZ, &dev->name);
 }
+
 static __always_inline void set_pkt_info(struct sk_buff *skb, struct pkt_info_t *pkt_info)
 {
     struct net_device *dev = BPF_CORE_READ(skb, dev);
     pkt_info->len = BPF_CORE_READ(skb, len);
     pkt_info->cpu = bpf_get_smp_processor_id();
     pkt_info->pid = bpf_get_current_pid_tgid() & 0xffff;
-    pkt_info->netns = get_netns(skb);
+    pkt_info->netns = get_netns_skb(skb);
     pkt_info->pkt_type = get_pkt_type(skb);
     read_dev_name((char *)&pkt_info->ifname, dev);
 
-//    pkt_info->ifname[0] = 0;
-//    bpf_probe_read(&pkt_info->ifname, IFNAMSIZ, &dev->name);
-//    if (pkt_info->ifname[0] == 0)
-//        bpf_strncpy(pkt_info->ifname, "nil", IFNAMSIZ);
+    //    pkt_info->ifname[0] = 0;
+    //    bpf_probe_read(&pkt_info->ifname, IFNAMSIZ, &dev->name);
+    //    if (pkt_info->ifname[0] == 0)
+    //        bpf_strncpy(pkt_info->ifname, "nil", IFNAMSIZ);
 }
 
 static __always_inline void set_ether_info(struct sk_buff *skb, struct l2_info_t *l2_info)
