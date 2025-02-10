@@ -22,74 +22,17 @@ typedef struct meta_info {
 } meta_info_t;
 
 typedef u16 dir_t;
+#define DATA_SIZE (sizeof(struct ethhdr) + sizeof(struct vlan_hdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(struct vxlan_hdr) + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr))
 
 typedef struct event {
     struct vlan_hdr vlan;
     meta_info_t meta;
-
     dir_t direction;
-
     u16 total_len;
-#define DATA_SIZE (sizeof(struct ethhdr) + sizeof(struct vlan_hdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(struct vxlan_hdr) + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr))
     u8 data[DATA_SIZE];
-#undef DATA_SIZE
 } __attribute__((packed)) event_t;
 
-// struct {
-//     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-//     __uint(key_size, sizeof(u32));
-//     __uint(value_size, sizeof(u32));
-//     __uint(max_entries, 128); // number of CPUs
-// } events SEC(".maps");
-
-typedef struct config_t {
-    u32 mark;
-} __attribute__((packed)) config_t;
-
-volatile const config_t __cfg = {};
-
 #define __validate_skb(skb, hdr) (((u64)hdr + sizeof(*hdr)) <= skb->data_end)
-
-static __always_inline bool filter_meta(struct __sk_buff *skb, config_t *cfg)
-{
-    if (cfg->mark && cfg->mark != skb->mark)
-        return false;
-
-    return true;
-}
-
-static __noinline bool filter_pcap_ebpf_l2(void *_skb, void *__skb, void *___skb, void *data, void *data_end) { return data != data_end && _skb == __skb && __skb == ___skb; }
-
-static __always_inline bool filter_pcap_l2(struct __sk_buff *skb)
-{
-    void *data = (void *)(long)skb->data;
-    void *data_end = (void *)(long)skb->data_end;
-    return filter_pcap_ebpf_l2((void *)skb, (void *)skb, (void *)skb, data, data_end);
-}
-
-static __always_inline bool filter_pcap(struct __sk_buff *skb) { return filter_pcap_l2(skb); }
-
-static __always_inline bool filter_tc(struct __sk_buff *skb)
-{
-    config_t cfg = __cfg;
-
-    return filter_meta(skb, &cfg) && filter_pcap(skb);
-}
-
-static __always_inline bool filter_fentry(struct sk_buff *skb)
-{
-    config_t cfg = __cfg;
-
-    // filter meta
-    if (cfg.mark && cfg.mark != BPF_CORE_READ(skb, mark))
-        return false;
-
-    // filter pcap
-    void *skb_head = BPF_CORE_READ(skb, head);
-    void *data = skb_head + BPF_CORE_READ(skb, mac_header);
-    void *data_end = skb_head + BPF_CORE_READ(skb, tail);
-    return filter_pcap_ebpf_l2((void *)skb, (void *)skb, (void *)skb, data, data_end);
-}
 
 static __always_inline bool is_vlan_proto(__be16 proto) { return proto == bpf_htons(ETH_P_8021Q) || proto == bpf_htons(ETH_P_8021AD); }
 

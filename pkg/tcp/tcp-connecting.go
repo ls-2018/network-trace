@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/dropbox/goebpf"
 	"log"
 	"net"
 	"os"
@@ -183,7 +184,7 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 		}
 		log.Printf(
 			"process❓:%-20s pid❓:%-6d skId❓:%-20d socketId❓:%-20d %-22s%s%-22s state: %-14s -> %-14s family:%-8s proto:%s ns:%d role:%-6s Seq:%d",
-			dump.ProcessNameString(ev.Process.Name[:]), // 不准
+			goebpf.NullTerminatedStringToString(ev.Process.Name[:]), // 不准
 			ev.Process.Pid, // 不准
 			ev.SkId,        // 不准
 			ev.SocketId,

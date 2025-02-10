@@ -25,12 +25,12 @@ struct trace_conn_info {
 struct trace_nft_info {
     enum nft_trace_types type;
 
-    u8 table_name[64];
+    char table_name[64];
     u64 table_handle;
-    u8 chain_name[64];
+    char chain_name[64];
     u64 chain_handle;
     u64 rule_handle;
-    u8 jump_target[64];
+    char jump_target[64];
     u32 verdict;
     u8 nf_proto;
     u8 policy;

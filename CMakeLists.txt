@@ -9,7 +9,6 @@ add_library(ebpf-nftrace
         ./ebpf/ethtool-trace.c
         ./ebpf/iptables-trace.c
         ./ebpf/nftrace-trace.c
-        ./ebpf/skbtracer.c
         ./ebpf/tcp-connecting.c
         ./ebpf/unix-sock-trace.c
         ./ebpf/sock-trace.c

@@ -4,7 +4,6 @@ import (
 	"context"
 	"ebpf-nftrace/pkg/nftrace"
 	"ebpf-nftrace/pkg/options"
-	"ebpf-nftrace/utils/dump"
 	"ebpf-nftrace/utils/errx"
 	"ebpf-nftrace/utils/nft"
 	"errors"
@@ -12,6 +11,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
+	"github.com/dropbox/goebpf"
 	"golang.org/x/sys/unix"
 	"log"
 	"net"
@@ -80,7 +80,7 @@ func Run(ctx context.Context, opt options.Options) {
 				"process:%-20s pid:%-6d skId:%d id:%-10d, type:%s, family:%s, tbl name:%-6s tbl_handle:%d, chain_name:%s, chain_handle:%d, rule_handle:%-5d, verdict:%-8s, "+
 					"jt:%-20s, nfproto:%d, policy:%s, makr:%-5d, iif:%d, iif_type:%d, iif_name:%s, oif:%d, oif_type:%d, oif_name:%s, "+
 					"src=%-22s, dst=%-22s, proto=%s, mac-src:%s, mac-dst:%s, len=%-5d, counter=%-20d, ts=%d ns\n",
-				dump.ProcessNameString(ev.ProcessInfo.Name[:]),
+				goebpf.NullTerminatedStringToString(ev.ProcessInfo.Name[:]),
 				ev.ProcessInfo.Pid,
 				ev.SkId,
 				ev.Id,

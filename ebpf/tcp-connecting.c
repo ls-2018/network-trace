@@ -35,20 +35,7 @@ struct {
     __uint(max_entries, 1024 * 1024);
 } events SEC(".maps");
 
-static __always_inline u32 get_netns(struct sk_buff *skb)
-{
-    u32 netns = BPF_CORE_READ(skb, dev, nd_net.net, ns.inum);
 
-    // if skb->dev is not initialized, try to get ns from sk->__sk_common.skc_net.net->ns.inum
-    if (netns == 0) {
-        struct sock *sk = BPF_CORE_READ(skb, sk);
-        if (sk != NULL) {
-            netns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
-        }
-    }
-
-    return netns;
-}
 
 // static inline __attribute__((always_inline)) unsigned __int128 bpf_swab128(unsigned __int128 x)
 // {
