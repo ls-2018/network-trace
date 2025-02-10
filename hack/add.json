@@ -4,7 +4,7 @@
       "add": {
         "table": {
           "family": "inet",
-          "name": "Retis_Table"
+          "name": "Et_Table"
         }
       }
     },
@@ -12,8 +12,8 @@
       "add": {
         "chain": {
           "family": "inet",
-          "table": "Retis_Table",
-          "name": "Retis_Chain"
+          "table": "Et_Table",
+          "name": "Et_Chain"
         }
       }
     },
@@ -21,8 +21,8 @@
       "insert": {
         "rule": {
           "family": "inet",
-          "table": "Retis_Table",
-          "chain": "Retis_Chain",
+          "table": "Et_Table",
+          "chain": "Et_Chain",
           "expr": [
             {
               "mangle": {

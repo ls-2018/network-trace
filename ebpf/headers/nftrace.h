@@ -69,13 +69,14 @@ struct nft_pktinfo {
     //    u16 fragoff;
     //    u16 thoff;
     //    u16 inneroff;
-
 } __attribute__((preserve_access_index));
 
-enum nft_chain_types { NFT_CHAIN_T_DEFAULT = 0,
-                       NFT_CHAIN_T_ROUTE,
-                       NFT_CHAIN_T_NAT,
-                       NFT_CHAIN_T_MAX };
+enum nft_chain_types {
+    NFT_CHAIN_T_DEFAULT = 0,
+    NFT_CHAIN_T_ROUTE,
+    NFT_CHAIN_T_NAT,
+    NFT_CHAIN_T_MAX
+};
 
 struct nft_chain_type {
     const char *name;
@@ -132,37 +133,6 @@ struct nft_traceinfo {
 #endif
 } __attribute__((preserve_access_index));
 
-struct trace_info {
-    u32 id;
-    enum nft_trace_types type;
-    u8 table_name[64];
-    u64 table_handle;
-    u8 chain_name[64];
-    u64 chain_handle;
-    u64 rule_handle;
-    u8 jump_target[64];
-    u32 verdict;
-    int family;
-    u8 nfproto;
-    u8 policy;
-    u16 len;
-    u32 mark;
-    u32 iif;
-    u32 oif;
-    u16 iif_type;
-    u16 oif_type;
-    u8 iif_name[16];
-    u8 oif_name[16];
-
-    struct ip_tuple ip_info;
-
-    u64 time;
-    u64 counter;
-
-    struct process_info process;
-};
-
-const struct trace_info *unused __attribute__((unused));
 #define XT_TABLE_MAXNAMELEN 32
 
 struct xt_table_info {

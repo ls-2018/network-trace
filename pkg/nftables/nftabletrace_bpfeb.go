@@ -13,45 +13,56 @@ import (
 )
 
 type nftabletraceTraceInfo struct {
-	Id          uint32
-	Type        uint32
-	TableName   [64]uint8
-	TableHandle uint64
-	ChainName   [64]uint8
-	ChainHandle uint64
-	RuleHandle  uint64
-	JumpTarget  [64]uint8
-	Verdict     uint32
-	Family      int32
-	Nfproto     uint8
-	Policy      uint8
-	Len         uint16
-	Mark        uint32
-	Iif         uint32
-	Oif         uint32
-	IifType     uint16
-	OifType     uint16
-	IifName     [16]uint8
-	OifName     [16]uint8
-	IpInfo      struct {
-		SrcPort uint16
-		DstPort uint16
-		SrcIp4  uint32
-		DstIp4  uint32
-		SrcIp6  struct{ In6U struct{ U6Addr8 [16]uint8 } }
-		DstIp6  struct{ In6U struct{ U6Addr8 [16]uint8 } }
-		SrcMac  [6]uint8
-		DstMac  [6]uint8
-		IpProto uint8
-		_       [3]byte
+	Id      uint32
+	_       [4]byte
+	SkId    uint64
+	Family  int32
+	Iif     uint32
+	Oif     uint32
+	IifType uint16
+	OifType uint16
+	IifName [16]uint8
+	OifName [16]uint8
+	NftInfo struct {
+		Type        uint32
+		TableName   [64]uint8
+		_           [4]byte
+		TableHandle uint64
+		ChainName   [64]uint8
+		ChainHandle uint64
+		RuleHandle  uint64
+		JumpTarget  [64]uint8
+		Verdict     uint32
+		NfProto     uint8
+		Policy      uint8
+		Len         uint16
+		Mark        uint32
+		_           [4]byte
 	}
-	Time    uint64
-	Counter uint64
-	Process struct {
+	ConnInfo struct {
+		C_mac    [6]uint8
+		D_mac    [6]uint8
+		C_port   uint16
+		S_port   uint16
+		C_ip     uint32
+		S_ip     uint32
+		C_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		S_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		NetNs    uint32
+		Family   uint16
+		Protocol uint16
+		Seq      uint16
+		OldState uint8
+		NewState uint8
+	}
+	_           [4]byte
+	Time        uint64
+	Counter     uint64
+	ProcessInfo struct {
 		Name [64]int8
-		Pid  uint32
+		Pid  uint64
+		Tgid uint64
 	}
-	_ [4]byte
 }
 
 // loadNftabletrace returns the embedded CollectionSpec for nftabletrace.

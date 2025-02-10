@@ -14,5 +14,5 @@ add_library(ebpf-nftrace
         ./ebpf/unix-sock-trace.c
         ./ebpf/sock-trace.c
         ./ebpf/tcptrace.bpf.c
-#        ./ebpf/xdp.c
+        ./ebpf/xdp-trace.c
 )

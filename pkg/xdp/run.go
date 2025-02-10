@@ -25,23 +25,25 @@ func init() {
 
 //go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types xdptrace ./../../ebpf/xdp-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 func Run(ctx context.Context) {
-	ifi, err := net.InterfaceByName(iFaceName)
+	interfaces, err := net.Interfaces()
 	if err != nil {
-		logger.Fatalf("network iface lookup for %q: %s", iFaceName, err)
+		log.Fatal(err)
 	}
-
 	obj := xdptraceObjects{}
 	err = loadXdptraceObjects(&obj, nil)
 	assert.NoVerifierErr(err, "loadXdptraceObjects")
-	opt := link.XDPOptions{
-		Program:   obj.TracePackets,
-		Interface: ifi.Index,
-		Flags:     link.XDPGenericMode,
+	for _, iface := range interfaces {
+		opt := link.XDPOptions{
+			Program:   obj.TracePackets,
+			Interface: iface.Index,
+			Flags:     link.XDPGenericMode,
+		}
+		xdp, err := link.AttachXDP(opt)
+		if err != nil {
+			logger.Fatalln(err)
+		}
+		defer xdp.Close()
 	}
-	xdp, err := link.AttachXDP(opt)
-	if err != nil {
-		logger.Fatalln(err)
-	}
-	defer xdp.Close()
+
 	<-ctx.Done()
 }

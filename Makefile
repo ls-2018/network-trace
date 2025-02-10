@@ -11,12 +11,12 @@ all:
 	#bpftool btf dump file /sys/kernel/btf/vmlinux   format c > ./ebpf/headers/vmlinux.h
 	#bpftool btf dump file /sys/kernel/btf/nf_tables format c > ./ebpf/headers/btf/nf_tables.h
 	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(${KERNEL_MAJOR}, ${KERNEL_MINOR}, ${KERNEL_PATCH})" > ebpf/headers/version.h
-#	nft flush ruleset
-#	iptables -F
-	#iptables -D OUTPUT -d 8.8.8.8 -p icmp -j DROP
+	#nft flush ruleset
+	#iptables -F
 	#iptables -A OUTPUT -d 8.8.8.8 -p icmp -j DROP
-	CUSTOM_DEFINE='-DUSE_RING_BUF ' go generate ./pkg/tcp
+	CUSTOM_DEFINE='-DUSE_RING_BUF ' go generate ./...
 	go run ./cmd/ebpf -ko ./bin/src/iptables-trace.ko
+	#go run ./cmd/ebpf -ko ./bin/src/iptables-trace.ko > ./logs/trace.log 2>&1
 
 build_kernel:
 	cd kernel && \

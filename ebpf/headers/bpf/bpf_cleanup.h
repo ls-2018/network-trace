@@ -4,6 +4,12 @@
 
 #include "bpf_helpers.h"
 
+enum {
+    CLEAN_ERR_SUCCESS = 0,
+    CLEAN_ERR_INIT = 1,
+    CLEAN_ERR_FAILED = 2,
+};
+
 #ifndef __cleanup
 #define __cleanup(fn) __attribute__((cleanup(fn)))
 #endif

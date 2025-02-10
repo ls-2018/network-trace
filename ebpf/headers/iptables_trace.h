@@ -4,7 +4,6 @@
 #include "define/netfiler.h"
 #include "define/icmp.h"
 #include "nftrace.h"
-#include "nftrace.h"
 
 #define IFNAMSIZ 16
 #define ADDRSIZE 16

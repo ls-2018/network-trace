@@ -185,8 +185,8 @@ table ip mangle { # handle 36
 	chain KUBE-PROXY-CANARY { # handle 1
 	}
 }
-table inet Retis_Table { # handle 40
-	chain Retis_Chain { # handle 1
+table inet Et_Table { # handle 40
+	chain Et_Chain { # handle 1
 		meta nftrace set 1 # handle 2
 	}
 }

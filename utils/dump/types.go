@@ -1,6 +1,10 @@
 package dump
 
-import "unsafe"
+import (
+	"golang.org/x/exp/slices"
+	"reflect"
+	"unsafe"
+)
 
 const (
 	MaxStackDepth = 50
@@ -506,7 +510,7 @@ const (
 
 type Config struct {
 	Pid      uint32
-	Netns    uint32
+	NetNs    uint32
 	Mark     uint32
 	Addr     [4]byte
 	PortLE   uint16
@@ -519,4 +523,14 @@ type Config struct {
 	OutputStack      uint8
 	IsSet            uint8
 	Pad              uint8
+}
+
+func ProcessNameString(p []int8) string {
+	// 使用 reflect.StringHeader 获取底层数据的指针
+	sh := reflect.StringHeader{
+		Data: uintptr(unsafe.Pointer(&p[0])),
+		Len:  slices.Index(p, 0),
+	}
+	// 将 reflect.StringHeader 转换为 string
+	return *(*string)(unsafe.Pointer(&sh))
 }

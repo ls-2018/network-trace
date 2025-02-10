@@ -3,6 +3,7 @@ package tcp
 import (
 	"bytes"
 	"context"
+	"ebpf-nftrace/pkg/options"
 	"ebpf-nftrace/utils/dump"
 	"ebpf-nftrace/utils/errx"
 	"ebpf-nftrace/utils/ether"
@@ -32,18 +33,26 @@ type Func struct {
 	Category       string
 }
 
-func Run(ctx context.Context) {
+func Run(ctx context.Context, opt options.Options) {
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatalf("Failed to remove rlimit memlock: %v", err)
 	}
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	spec, err := loadTcpconn()
+	for _, _spec := range opt.Specs {
+		_spec(spec)
+	}
 	errx.Check(err, "load tcp conn")
+
 	obj, err := ebpf.NewCollection(spec)
+
 	errx.CheckVerifierErr(err, "Failed to load bpf obj: %v")
+
+	for _, _obj := range opt.Objs {
+		_obj(obj)
+	}
 
 	var fExitEntryFunc []Func
 	var kProbeRetProbeFunc []Func
@@ -89,6 +98,7 @@ func Run(ctx context.Context) {
 	}
 
 	defer obj.Close()
+
 	go handlePerfEvent(ctx, obj.Maps["events"])
 
 	for _, info := range fExitEntryFunc {
@@ -150,41 +160,44 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 			log.Printf("Reading perf-event: %v", err)
 		}
 		ev := tcpconnEventT{}
-
-		//if event.Remaining != 0 {
-		//	log.Printf("Remaining %d events", event.Remaining/int(unsafe.Sizeof(ev)))
-		//}
-
 		binary.Read(bytes.NewBuffer(event.RawSample), binary.LittleEndian, &ev)
-
-		//s := fmt.Sprintf("%s", net.IP(ether.ReverseBytes(ev.C_ip[:])))
-		//d := fmt.Sprintf("%s", net.IP(ether.ReverseBytes(ev.S_ip[:])))
 		var s, d string
 
-		if dump.AddressFamily(ev.Family) == dump.AF_INET6 {
-			s = fmt.Sprintf("%s", net.IP(ev.C_ip6[:]).String())
-			d = fmt.Sprintf("%s", net.IP(ev.S_ip6[:]).String())
+		if dump.AddressFamily(ev.ConnInfo.Family) == dump.AF_INET6 {
+			s = fmt.Sprintf("%s", net.IP(ev.ConnInfo.C_ip6.In6U.U6Addr8[:]).String())
+			d = fmt.Sprintf("%s", net.IP(ev.ConnInfo.S_ip6.In6U.U6Addr8[:]).String())
 		} else {
-			s = fmt.Sprintf("%s", net.IP(ether.ReverseBytes((*[4]byte)(unsafe.Pointer(&ev.C_ip))[:])))
-			d = fmt.Sprintf("%s", net.IP(ether.ReverseBytes((*[4]byte)(unsafe.Pointer(&ev.S_ip))[:])))
+			s = fmt.Sprintf("%s", net.IP(ether.ReverseBytes((*[4]byte)(unsafe.Pointer(&ev.ConnInfo.C_ip))[:])))
+			d = fmt.Sprintf("%s", net.IP(ether.ReverseBytes((*[4]byte)(unsafe.Pointer(&ev.ConnInfo.S_ip))[:])))
 		}
 		if s == "127.0.0.1" && d == "127.0.0.1" {
 			continue
 		}
+		var direct = "<---->"
+		switch dump.Agent(ev.Type) {
+		case dump.LinkRoleUnknown:
+		case dump.LinkRoleServer:
+			direct = "    ->"
+		case dump.LinkRoleClient:
+			direct = "->    "
+		}
 		log.Printf(
-			"skId:%-20d %-22s -> %-22s state: %-14s -> %-14s family:%-8s proto:%s ns:%d role:%-6s Seq:%d",
-			ev.SkId,
-			fmt.Sprintf("%s:%d", s, ev.C_port),
-			fmt.Sprintf("%s:%d", d, ev.S_port),
-			dump.SockState(ev.OldState).String(),
-			dump.SockState(ev.NewState).String(),
-			dump.AddressFamily(ev.Family).String(),
-			dump.IpProto(ev.Protocol).String(),
-			ev.NetNs,
+			"process❓:%-20s pid❓:%-6d skId❓:%-20d socketId❓:%-20d %-22s%s%-22s state: %-14s -> %-14s family:%-8s proto:%s ns:%d role:%-6s Seq:%d",
+			dump.ProcessNameString(ev.Process.Name[:]), // 不准
+			ev.Process.Pid, // 不准
+			ev.SkId,        // 不准
+			ev.SocketId,
+			fmt.Sprintf("%s:%d", s, ev.ConnInfo.C_port),
+			direct,
+			fmt.Sprintf("%s:%d", d, ev.ConnInfo.S_port),
+			dump.SockState(ev.ConnInfo.OldState).String(),
+			dump.SockState(ev.ConnInfo.NewState).String(),
+			dump.AddressFamily(ev.ConnInfo.Family).String(),
+			dump.IpProto(ev.ConnInfo.Protocol).String(),
+			ev.ConnInfo.NetNs,
 			dump.Agent(ev.Type).String(),
-			ev.Seq,
+			ev.ConnInfo.Seq,
 		)
-
 		select {
 		case <-ctx.Done():
 			return

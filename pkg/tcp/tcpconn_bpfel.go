@@ -13,20 +13,30 @@ import (
 )
 
 type tcpconnEventT struct {
-	C_port   uint16
-	S_port   uint16
-	Family   uint16
-	Protocol uint16
 	Type     uint16
-	Seq      uint16
-	OldState uint8
-	NewState uint8
 	SkId     uint64
-	C_ip     uint32
-	S_ip     uint32
-	C_ip6    [16]byte /* uint128 */
-	S_ip6    [16]byte /* uint128 */
-	NetNs    uint32
+	SocketId uint64
+	ConnInfo struct {
+		C_mac    [6]uint8
+		D_mac    [6]uint8
+		C_port   uint16
+		S_port   uint16
+		C_ip     uint32
+		S_ip     uint32
+		C_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		S_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		NetNs    uint32
+		Family   uint16
+		Protocol uint16
+		Seq      uint16
+		OldState uint8
+		NewState uint8
+	}
+	Process struct {
+		Name [64]int8
+		Pid  uint64
+		Tgid uint64
+	}
 }
 
 // loadTcpconn returns the embedded CollectionSpec for tcpconn.

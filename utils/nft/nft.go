@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	nfTraceTable = "Retis_Table"
-	nfTraceChain = "Retis_Chain"
+	nfTraceTable = "Et_Table"
+	nfTraceChain = "Et_Chain"
 )
 
 func Add() error {
@@ -55,5 +55,3 @@ func Remove() error {
 	tx.Delete(&knftables.Table{})
 	return nft.Run(context.TODO(), tx)
 }
-
-// nft monitor trace

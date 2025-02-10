@@ -3,7 +3,6 @@
 
 extern int LINUX_KERNEL_VERSION __kconfig;
 
-#define TASK_COMM_LEN 16
 #define UNIX_PATH_MAX 108
 
 #define SS_MAX_SEG_SIZE (1024 * 50)
@@ -30,11 +29,11 @@ static const volatile struct config CONFIG = {
 #define cfg ((const volatile struct config *)&CONFIG)
 
 struct packet {
-    struct process_info process;
+    struct trace_process_info process;
     __u32 peer_pid;
     __u32 len;
     __u32 flags;
-    char comm[TASK_COMM_LEN];
+    char comm[MAX_PROCESS_NAME];
     char path[UNIX_PATH_MAX];
     char data[SS_MAX_SEG_SIZE];
 };
@@ -152,7 +151,7 @@ static __noinline int usk_send_msg(void *ctx, struct socket *sock, struct msghdr
     if (!__is_sock_path_matched(usk, path) && !__is_sock_path_matched(peer, path))
         return 0;
 
-    struct process_info *p = &pkt->process;
+    struct trace_process_info *p = &pkt->process;
     fill_process_info(p);
 
     BPF_CORE_READ_INTO(&numbers, sock, sk, sk_peer_pid, numbers);

@@ -10,10 +10,10 @@ struct {
 
 static __always_inline u64 upd_counter_in_map(void *map)
 {
-    u32 key = 0;
-    u64 *val, init_val = 1;
+    const u32 key = 0;
+    const u64 init_val = 0;
 
-    val = bpf_map_lookup_elem(map, &key);
+    u64 *val = bpf_map_lookup_elem(map, &key);
     if (val) {
         return __sync_fetch_and_add(val, 1);
     }

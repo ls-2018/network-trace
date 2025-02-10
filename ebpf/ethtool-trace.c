@@ -1,4 +1,4 @@
-#include "bpf_all.h"
+#include "trace.h"
 
 #define IFNAMSIZ 16
 
@@ -9,7 +9,7 @@
 #define EVENT_TYPE_GENL 2
 
 struct event {
-    struct process_info process;
+    struct trace_process_info process;
     u8 type;
     u8 genlhdr_cmd;
     u16 ethcmd;
@@ -82,7 +82,7 @@ static __always_inline int __kp_dev_ethtool(void *ctx, struct net *net, struct i
 
     bpf_probe_read_kernel_str(ev.ifname, sizeof(ev.ifname), ifr->ifr_ifrn.ifrn_name);
 
-    struct process_info *p = &ev.process;
+    struct trace_process_info *p = &ev.process;
     fill_process_info(p);
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &ev, sizeof(ev));
@@ -127,7 +127,7 @@ int kp_ethnl_doit(struct pt_regs *ctx)
 SEC("kprobe/ethnl_parse_header_dev_get")
 int kp_ethnl_dev(struct pt_regs *ctx)
 {
-    struct ethnl_req_info *req = (typeof(req))(void *)(u64)PT_REGS_PARM1(ctx);
+    struct ethnl_req_info *req = (void *)(u64)PT_REGS_PARM1(ctx);
     struct event *ev = __get_event();
 
     if (unlikely(!ev))
@@ -149,7 +149,7 @@ int krp_ethnl_dev(struct pt_regs *ctx)
     if (likely(ev->req))
         __get_dev_name(ev, ev->req);
 
-    struct process_info *p = &ev->process;
+    struct trace_process_info *p = &ev->process;
     fill_process_info(p);
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, ev, SIZEOF_EVENT);
 

@@ -4,13 +4,13 @@
 #define TCP_EVENT_TYPE_CONNECT 1
 #define TCP_EVENT_TYPE_ACCEPT 2
 #define TCP_EVENT_TYPE_CLOSE 3
-#define TASK_COMM_LEN 16
+#define MAX_PROCESS_NAME 16
 // ipv4 event
 struct tcp_ipv4_event_t {
     __u64 ts_ns;
     __u32 type;
     __u32 pid;
-    char comm[TASK_COMM_LEN];
+    char comm[MAX_PROCESS_NAME];
     __u8 ip;
     __u32 saddr;
     __u32 daddr;
@@ -24,7 +24,7 @@ struct tcp_ipv6_event_t {
     __u64 ts_ns;
     __u32 type;
     __u32 pid;
-    char comm[TASK_COMM_LEN];
+    char comm[MAX_PROCESS_NAME];
     unsigned __int128 saddr;
     unsigned __int128 daddr;
     __u16 sport;
@@ -51,7 +51,7 @@ struct ipv6_tuple_t {
 
 struct pid_comm_t {
     __u64 pid;
-    char comm[TASK_COMM_LEN];
+    char comm[MAX_PROCESS_NAME];
 };
 
 struct {
@@ -211,7 +211,7 @@ int trace_tcp_set_state_entry(struct pt_regs *ctx)
         // return 0;
         //}
         ipv4_event.pid = p->pid >> 32;
-        for (int i = 0; i < TASK_COMM_LEN; i++) {
+        for (int i = 0; i < MAX_PROCESS_NAME; i++) {
             ipv4_event.comm[i] = p->comm[i];
         }
         ipv4_event.ts_ns = bpf_ktime_get_ns(); // 时间戳
@@ -248,7 +248,7 @@ int trace_tcp_set_state_entry(struct pt_regs *ctx)
         // if(!ipv6_event) {
         // return 0;
         //}
-        for (int i = 0; i < TASK_COMM_LEN; i++) {
+        for (int i = 0; i < MAX_PROCESS_NAME; i++) {
             ipv6_event.comm[i] = p->comm[i];
         }
         ipv6_event.ts_ns = bpf_ktime_get_ns(); // 时间戳

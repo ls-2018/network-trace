@@ -1,11 +1,5 @@
-#include "bpf_all.h"
+#include "trace.h"
 #include "define/socket.h"
-
-enum {
-    LINK_ROLE_UNKNOWN = 0,
-    LINK_ROLE_CLIENT = 1,
-    LINK_ROLE_SERVER = 2
-};
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -22,35 +16,19 @@ struct proto_accept_arg {
 };
 
 struct state_info {
-    u8 old_state;
-    u8 new_state;
-    u32 seq;
-    u64 sk_id;
-    u8 role;
+    __u8 old_state;
+    __u8 new_state;
+    __u32 seq;
+    __u8 role;
 };
 
 struct event_t {
-    __u16 c_port;
-    __u16 s_port;
-    __u16 family;
-    __u16 protocol;
-    u16 type;
-    u16 seq;
-    u8 old_state;
-    u8 new_state;
-    u64 sk_id;
-    u32 c_ip;
-    u32 s_ip;
-  unsigned  __int128 c_ip6;
-  unsigned  __int128 s_ip6;
-    __u32 net_ns;
+    __u16 type;
+    __u64 sk_id;
+    __u64 socket_id;
+    struct trace_conn_info conn_info;
+    struct trace_process_info process;
 } __attribute__((packed));
-
-enum {
-    ERR_SUCCESS = 0,
-    ERR_INIT = 1,
-    ERR_FAILED = 2,
-};
 
 struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -85,12 +63,11 @@ static __always_inline u32 get_netns(struct sk_buff *skb)
 //     return ((unsigned __int128)low << 64) | high;
 // }
 
-static __noinline void copy_event_from_sk(struct sock *sk, struct event_t *event, u16 type, int *err)
+static __noinline void copy_event_from_sk(struct sock *sk, struct event_t *event, const __u8 type, int *err)
 {
     __u32 skc_rcv_s_addr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    __u32 skc_rcv_d_addr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     if (bpf_ntohl(skc_rcv_s_addr) <= 0) {
-        *err = ERR_FAILED;
+        *err = CLEAN_ERR_FAILED;
         return;
     }
 
@@ -100,43 +77,45 @@ static __noinline void copy_event_from_sk(struct sock *sk, struct event_t *event
     switch (type) {
 
         case LINK_ROLE_SERVER:
-            event->s_port = skc_s_port;
-            event->c_port = bpf_ntohs(skc_d_port);
-                bpf_probe_read_kernel(&event->s_ip, sizeof(event->s_ip), &sk->__sk_common.skc_rcv_saddr);
-                bpf_probe_read_kernel(&event->c_ip, sizeof(event->c_ip), &sk->__sk_common.skc_daddr);
+            event->conn_info.s_port = skc_s_port;
+            event->conn_info.c_port = bpf_ntohs(skc_d_port);
+            bpf_probe_read_kernel(&event->conn_info.s_ip, sizeof(event->conn_info.s_ip), &sk->__sk_common.skc_rcv_saddr);
+            bpf_probe_read_kernel(&event->conn_info.c_ip, sizeof(event->conn_info.c_ip), &sk->__sk_common.skc_daddr);
 
-        /* family == AF_INET6 */
-            bpf_probe_read_kernel(&event->s_ip6, sizeof(event->s_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-            bpf_probe_read_kernel(&event->c_ip6, sizeof(event->c_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+            /* family == AF_INET6 */
+            bpf_probe_read_kernel(&event->conn_info.s_ip6, sizeof(event->conn_info.s_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+            bpf_probe_read_kernel(&event->conn_info.c_ip6, sizeof(event->conn_info.c_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
             break;
 
         case LINK_ROLE_UNKNOWN:
         case LINK_ROLE_CLIENT:
-            event->c_port = skc_s_port;
-            event->s_port = bpf_ntohs(skc_d_port);
-            bpf_probe_read_kernel(&event->c_ip, sizeof(event->c_ip), &sk->__sk_common.skc_rcv_saddr);
-            bpf_probe_read_kernel(&event->s_ip, sizeof(event->s_ip), &sk->__sk_common.skc_daddr);
-        /* family == AF_INET6 */
-            bpf_probe_read_kernel(&event->c_ip6, sizeof(event->c_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-            bpf_probe_read_kernel(&event->s_ip6, sizeof(event->s_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+            event->conn_info.c_port = skc_s_port;
+            event->conn_info.s_port = bpf_ntohs(skc_d_port);
+            bpf_probe_read_kernel(&event->conn_info.c_ip, sizeof(event->conn_info.c_ip), &sk->__sk_common.skc_rcv_saddr);
+            bpf_probe_read_kernel(&event->conn_info.s_ip, sizeof(event->conn_info.s_ip), &sk->__sk_common.skc_daddr);
+            /* family == AF_INET6 */
+            bpf_probe_read_kernel(&event->conn_info.c_ip6, sizeof(event->conn_info.c_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+            bpf_probe_read_kernel(&event->conn_info.s_ip6, sizeof(event->conn_info.s_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
             break;
         default:
             break;
     }
 
-    event->s_ip = bpf_ntohl(event->s_ip);
-    event->c_ip = bpf_ntohl(event->c_ip);
+    event->conn_info.s_ip = bpf_ntohl(event->conn_info.s_ip);
+    event->conn_info.c_ip = bpf_ntohl(event->conn_info.c_ip);
 }
 
 static __noinline void handle_new_connection(void *ctx, struct sock *sk, const struct state_info *states)
 {
     struct event_t *event;
-    int _err = ERR_INIT;
+    int _err = CLEAN_ERR_INIT;
     int *err = &_err;
     guard_ring_buf(&events, event, err);
     if (!event) {
         return;
     }
+    struct trace_process_info *p = &event->process;
+    fill_process_info(p);
 
     if (sk) {
         const __u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
@@ -148,20 +127,21 @@ static __noinline void handle_new_connection(void *ctx, struct sock *sk, const s
         if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP && protocol != IPPROTO_ICMP) {
             return;
         }
-        event->sk_id = states->sk_id;
-        event->family = family;
-        event->protocol = protocol;
-        event->net_ns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
-        event->seq = states->seq;
-        event->old_state = states->old_state;
-        event->new_state = states->new_state;
+        event->sk_id = (u64)sk;
+        event->socket_id = (u64)BPF_CORE_READ(sk, sk_socket);
+        event->conn_info.family = family;
+        event->conn_info.protocol = protocol;
+        event->conn_info.net_ns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
+        event->conn_info.seq = states->seq;
+        event->conn_info.old_state = states->old_state;
+        event->conn_info.new_state = states->new_state;
 
         copy_event_from_sk(sk, event, states->role, err);
     } else {
         return;
     }
-    if (*err == ERR_INIT) {
-        *err = ERR_SUCCESS;
+    if (*err == CLEAN_ERR_INIT) {
+        *err = CLEAN_ERR_SUCCESS;
     }
 }
 
@@ -355,7 +335,6 @@ int BPF_KPROBE(k_set_state, struct sock *sk, int new_state)
     struct state_info info = {
         .old_state = old_state,
         .new_state = new_state,
-        .sk_id = id,
     };
     if (old_state == TCP_SYN_SENT && new_state == TCP_ESTABLISHED) {
         info.seq = 5;
@@ -388,7 +367,7 @@ exit:
 //     __u64 cpu;
 //     __u32 type;
 //     __u32 pid;
-//     char comm[TASK_COMM_LEN];
+//     char comm[MAX_PROCESS_NAME];
 //     __u32 saddr;
 //     __u32 daddr;
 //     __u16 sport;

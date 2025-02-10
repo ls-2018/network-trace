@@ -86,19 +86,17 @@ int trace_packets(struct xdp_md *ctx)
                 break;
         }
 
-        ct.s_ip = bpf_ntohl(iph->saddr);
-        ct.d_ip = bpf_ntohl(iph->daddr);
-        ct.s_port = bpf_ntohs(src_port);
-        ct.d_port = bpf_ntohs(dest_port);
-        bpf_printk("%02x:%02x:%02x:%02x:%02x:%02x --> %02x:%02x:%02x:%02x:%02x:%02x", eth->h_source[0], eth->h_source[1], eth->h_source[2], eth->h_source[3], eth->h_source[4], eth->h_source[5], eth->h_dest[0], eth->h_dest[1], eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
-        bpf_printk("%pi4:%d ---> %pi4:%d", &iph->saddr, ct.s_port, &iph->daddr, ct.d_port);
+        //        ct.s_ip = bpf_ntohl(iph->saddr);
+        //        ct.d_ip = bpf_ntohl(iph->daddr);
+        //        ct.s_port = bpf_ntohs(src_port);
+        //        ct.d_port = bpf_ntohs(dest_port);
     };
-    //    bpf_printk("eth proto : %d ", bpf_ntohs(eth->h_proto)); // ETH_P_IP
-    //    bpf_printk("iphdr      tos: %d", iph->tos);
-    //    bpf_printk("iphdr  tot_len: %d", bpf_ntohs(iph->tot_len));
-    //    bpf_printk("iphdr       id: %d", bpf_ntohs(iph->id));
-    //    bpf_printk("iphdr frag_off: %d", bpf_ntohs(iph->frag_off));
-    //    bpf_printk("iphdr      ttl: %d", iph->ttl);
+    //    bpf_debug_printk("eth proto : %d ", bpf_ntohs(eth->h_proto)); // ETH_P_IP
+    //    bpf_debug_printk("iphdr      tos: %d", iph->tos);
+    //    bpf_debug_printk("iphdr  tot_len: %d", bpf_ntohs(iph->tot_len));
+    //    bpf_debug_printk("iphdr       id: %d", bpf_ntohs(iph->id));
+    //    bpf_debug_printk("iphdr frag_off: %d", bpf_ntohs(iph->frag_off));
+    //    bpf_debug_printk("iphdr      ttl: %d", iph->ttl);
 
     //    struct flow_count *stat = bpf_map_lookup_elem(&xdp_stats_map, &ct);
     //    if (stat) {
@@ -129,7 +127,7 @@ int xdp_f2(struct xdp_md *ctx)
         return XDP_PASS;
 
     if (*val == MAGIC)
-        bpf_printk("xdp tailcall \n");
+        bpf_debug_printk("xdp tailcall \n");
 
     return XDP_PASS;
 }
