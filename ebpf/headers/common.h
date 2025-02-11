@@ -38,7 +38,6 @@ struct trace_conn_info {
     __u8 new_state;
     struct trace_icmp icmp_info;
     __u8 role;
-
 };
 
 struct sk_common {
@@ -58,6 +57,7 @@ struct trace_sk_info {
     u32 mark;
     u16 type;
     u16 pad;
+
 } __attribute__((packed));
 
 struct trace_socket_info {
@@ -92,6 +92,7 @@ struct trace_nft_info {
     u8 policy;
     u16 len;
     u32 mark;
+    u32 base_chain_family;
 };
 
 struct trace_process_info {

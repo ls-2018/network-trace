@@ -1,11 +1,8 @@
-#include "trace.h"
-#include <define/netfiler.h>
-#include <define/if_ether.h>
+#include "nftrace.h"
 
 struct trace_info {
     u32 skb_hash;
-    u32 family;
-    u64 sk_id;
+    struct trace_sk_info sk_info;
     struct trace_dev_info dev_info;
     struct trace_nft_info nft_info;
     struct trace_conn_info conn_info;
@@ -155,11 +152,10 @@ static __always_inline void fill_trace(int *err, struct trace_info *trace, const
     struct trace_process_info *p = &trace->process_info;
     fill_process_info(p);
     struct sock *sk = BPF_CORE_READ(pkt, skb, sk);
-    trace->sk_id = (u64)sk;
-    trace->skb_hash = BPF_CORE_READ(pkt, skb, hash);
+    set_sk_info(sk, &trace->sk_info);
     do {
         trace->nft_info.type = BPF_CORE_READ_BITFIELD_PROBED(info, type);
-        trace->family = BPF_CORE_READ(info, basechain, type, family);
+        trace->nft_info.base_chain_family = BPF_CORE_READ(info, basechain, type, family);
         trace->nft_info.nf_proto = BPF_CORE_READ(pkt, state, pf);
         bpf_probe_read_kernel_str(trace->nft_info.table_name, sizeof(trace->nft_info.table_name), BPF_CORE_READ(info, basechain, chain.table, name));
         trace->nft_info.table_handle = BPF_CORE_READ(info, basechain, chain.table, handle);

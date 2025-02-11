@@ -1,4 +1,4 @@
-#include "trace.h"
+#include "common.h"
 
 #define IFNAMSIZ 16
 

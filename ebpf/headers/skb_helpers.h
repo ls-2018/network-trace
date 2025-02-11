@@ -4,6 +4,7 @@
 #include "bpf_all.h"
 #include "string.h"
 #include "nftrace.h"
+
 #define IFNAMSIZ 16
 #define ADDRSIZE 16
 #define MAC_HEADER_SIZE 14

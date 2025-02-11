@@ -1,4 +1,4 @@
-#include "trace.h"
+#include "common.h"
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);

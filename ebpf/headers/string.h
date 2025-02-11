@@ -1,3 +1,6 @@
+#ifndef STRING
+#define STRING
+
 #include "bpf/bpf_helpers.h"
 
 static __always_inline int strcmp(unsigned char a[16], unsigned char b[16])
@@ -29,3 +32,5 @@ static __always_inline void bpf_strncpy(char *dst, const char *src, int n)
     CPY(64);
 #undef CPY
 }
+
+#endif

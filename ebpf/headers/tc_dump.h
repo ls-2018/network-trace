@@ -11,7 +11,6 @@
 
 #define VXLAN_PORT 4789
 
-volatile const u32 IFINDEX = 0;
 
 #define DIR_INGRESS 1
 #define DIR_EGRESS 2
@@ -141,7 +140,6 @@ static __always_inline void copy_headers(void *__skb, event_t *ev, bool is_tc)
 
 static __always_inline void set_output_tc(struct __sk_buff *skb, event_t *ev)
 {
-    ev->meta.ifindex = IFINDEX;
     ev->meta.mark = skb->mark;
 
     if (skb->vlan_present) {
@@ -154,7 +152,6 @@ static __always_inline void set_output_tc(struct __sk_buff *skb, event_t *ev)
 
 static __always_inline void set_output_fentry(struct sk_buff *skb, event_t *ev)
 {
-    ev->meta.ifindex = IFINDEX;
     ev->meta.mark = BPF_CORE_READ(skb, mark);
 
     if (BPF_CORE_READ(skb, vlan_proto)) {

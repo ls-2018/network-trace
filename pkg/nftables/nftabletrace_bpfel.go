@@ -14,8 +14,17 @@ import (
 
 type nftabletraceTraceInfo struct {
 	SkbHash uint32
-	Family  uint32
-	SkId    uint64
+	SkInfo  struct {
+		SkId         uint64
+		RxDstIfindex uint32
+		BacklogLen   uint32
+		RcvBuff      uint32
+		SndBuff      uint32
+		Priority     uint32
+		Mark         uint32
+		Type         uint16
+		Pad          uint16
+	}
 	DevInfo struct {
 		IifName [16]uint8
 		OifName [16]uint8
@@ -26,18 +35,20 @@ type nftabletraceTraceInfo struct {
 		Pad     [2]uint16
 	}
 	NftInfo struct {
-		Type        uint32
-		Verdict     uint32
-		TableName   [64]uint8
-		TableHandle uint64
-		ChainName   [64]uint8
-		ChainHandle uint64
-		RuleHandle  uint64
-		JumpTarget  [64]uint8
-		NfProto     uint8
-		Policy      uint8
-		Len         uint16
-		Mark        uint32
+		Type            uint32
+		Verdict         uint32
+		TableName       [64]uint8
+		TableHandle     uint64
+		ChainName       [64]uint8
+		ChainHandle     uint64
+		RuleHandle      uint64
+		JumpTarget      [64]uint8
+		NfProto         uint8
+		Policy          uint8
+		Len             uint16
+		Mark            uint32
+		BaseChainFamily uint32
+		_               [4]byte
 	}
 	ConnInfo struct {
 		C_mac      [6]uint8

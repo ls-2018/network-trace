@@ -3,6 +3,8 @@
 #include "version.h"
 #include "bpf_all.h"
 #include "btf/nf_tables.h"
+#include "common.h"
+#include <define/netfiler.h>
 
 struct nft_rule {
     //    struct list_head list;
@@ -76,7 +78,7 @@ enum nft_chain_types { NFT_CHAIN_T_DEFAULT = 0, NFT_CHAIN_T_ROUTE, NFT_CHAIN_T_N
 struct nft_chain_type {
     const char *name;
     enum nft_chain_types type;
-    int family;
+    u32 family;
     // struct module *owner;
     // unsigned int hook_mask;
     // nf_hookfn *hooks[6];

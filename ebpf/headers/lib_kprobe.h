@@ -1,9 +1,8 @@
-
-
 #ifndef __LIB_KPROBE_H_
 #define __LIB_KPROBE_H_
 
-#include "bpf_all.h"
+#include "vmlinux.h"
+#include "bpf/bpf_helpers.h"
 
 enum probing_type {
     PROBE_TYPE_DEFAULT = 0,
