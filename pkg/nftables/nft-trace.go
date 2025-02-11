@@ -74,8 +74,8 @@ func Run(ctx context.Context, opt options.Options) {
 			if ev.NftInfo.RuleHandle == 0 {
 				continue
 			}
-			s := nftrace.Ip2String(ev.Family == unix.NFPROTO_IPV6, ev.ConnInfo.C_ip, ev.ConnInfo.C_ip6.In6U.U6Addr8[:])
-			d := nftrace.Ip2String(ev.Family == unix.NFPROTO_IPV6, ev.ConnInfo.S_ip, ev.ConnInfo.S_ip6.In6U.U6Addr8[:])
+			s := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.C_ip, ev.ConnInfo.C_ip6.In6U.U6Addr8[:])
+			d := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.S_ip, ev.ConnInfo.S_ip6.In6U.U6Addr8[:])
 			log.Printf(
 				//"process:%-20s pid:%-6d skId:%d id:%-10d, type:%s, family:%s, tbl_name:%-6s tbl_handle:%d, chain_name:%s, chain_handle:%d, rule_handle:%-5d, verdict:%-8s, "+
 				//	"jt:%-20s, nfproto:%d, policy:%s, makr:%-5d, iif:%d, iif_type:%d, iif_name:%s, oif:%d, oif_type:%d, oif_name:%s, "+
@@ -85,9 +85,9 @@ func Run(ctx context.Context, opt options.Options) {
 					"src=%s, dst=%s, proto=%s, mac-src:%s, mac-dst:%s, len=%d, %s\n",
 				goebpf.NullTerminatedStringToString(ev.ProcessInfo.Name[:]),
 				ev.ProcessInfo.Pid,
-				ev.SkId,
+				ev.SkInfo.SkId,
 				nftrace.TraceType(ev.NftInfo.Type),
-				nftrace.NfFamily(ev.Family).String(),
+				nftrace.NfFamily(ev.NftInfo.BaseChainFamily).String(),
 				unix.ByteSliceToString(ev.NftInfo.TableName[:]),
 				ev.NftInfo.TableHandle,
 				unix.ByteSliceToString(ev.NftInfo.ChainName[:]),
