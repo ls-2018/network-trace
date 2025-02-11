@@ -11,7 +11,6 @@
 
 #define VXLAN_PORT 4789
 
-
 #define DIR_INGRESS 1
 #define DIR_EGRESS 2
 
