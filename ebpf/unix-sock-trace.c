@@ -1,6 +1,4 @@
-
-#include "bpf_all.h"
-
+#include "trace.h"
 extern int LINUX_KERNEL_VERSION __kconfig;
 
 #define UNIX_PATH_MAX 108

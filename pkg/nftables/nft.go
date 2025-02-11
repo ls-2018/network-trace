@@ -1,4 +1,4 @@
-package nft
+package nftables
 
 import (
 	"context"
@@ -15,7 +15,7 @@ var info = Info{
 	lock: &sync.RWMutex{},
 }
 
-func Run(interval time.Duration, ctx context.Context) {
+func Run2(interval time.Duration, ctx context.Context) {
 	ticker := time.NewTicker(interval)
 
 	go func() {

@@ -106,7 +106,7 @@ struct event_t {
         struct iptables_trace_t trace_info;
         struct nft_trace_t nft_info;
     };
-} ;
+};
 union ___skb_pkt_type {
     u8 value;
 

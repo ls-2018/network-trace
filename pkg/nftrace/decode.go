@@ -2,15 +2,16 @@ package nftrace
 
 import (
 	"encoding/binary"
+	"fmt"
 	"golang.org/x/sys/unix"
 	"net"
 )
 
 type (
-	Verdict     int32
-	FamilyTable int32
-	TraceType   uint32
-	IpProto     uint8
+	Verdict   int32
+	NfFamily  uint8
+	TraceType uint32
+	IpProto   uint16
 )
 
 /* Responses from hook functions. */
@@ -65,28 +66,27 @@ func (v Verdict) String() string {
 	return "unknown"
 }
 
-func (f FamilyTable) String() string {
+func (f NfFamily) String() string {
 	switch f {
-	case unix.NFPROTO_IPV4:
-		return "ip"
-
-	case unix.NFPROTO_IPV6:
-		return "ip6"
-
+	case unix.NFPROTO_UNSPEC:
+		return "unspec"
 	case unix.NFPROTO_INET:
 		return "inet"
-
-	case unix.NFPROTO_NETDEV:
-		return "netdev"
-
+	case unix.NFPROTO_IPV4:
+		return "ip"
 	case unix.NFPROTO_ARP:
 		return "arp"
-
+	case unix.NFPROTO_NETDEV:
+		return "netdev"
 	case unix.NFPROTO_BRIDGE:
 		return "bridge"
+	case unix.NFPROTO_IPV6:
+		return "ip6"
+	case unix.NFPROTO_NUMPROTO:
+		return "numproto"
 	}
 
-	return "unknown"
+	return fmt.Sprintf("unknown(%d)", f)
 }
 
 func (t TraceType) String() string {
@@ -107,42 +107,32 @@ func (p IpProto) String() string {
 	switch p {
 	case unix.IPPROTO_TCP:
 		return "tcp"
-
 	case unix.IPPROTO_UDP:
 		return "udp"
-
 	case unix.IPPROTO_UDPLITE:
 		return "udplite"
-
 	case unix.IPPROTO_ESP:
 		return "esp"
-
 	case unix.IPPROTO_AH:
 		return "ah"
-
 	case unix.IPPROTO_ICMP:
 		return "icmp"
-
 	case unix.IPPROTO_ICMPV6:
 		return "icmpv6"
-
 	case unix.IPPROTO_COMP:
 		return "comp"
-
 	case unix.IPPROTO_DCCP:
 		return "dccp"
-
 	case unix.IPPROTO_SCTP:
 		return "sctp"
-
 	case ICMP_REDIRECT:
 		return "redirect"
 	}
-
-	return "unknown"
+	return fmt.Sprintf("unknown(%d)", p)
 }
 
 func Ip2String(isIp6 bool, ip4 uint32, ip6 []byte) string {
+	isIp6 = true
 	if isIp6 {
 		return net.IP(ip6[:]).String()
 	}

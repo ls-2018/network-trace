@@ -15,7 +15,7 @@ struct event {
     u16 ethcmd;
     char ifname[IFNAMSIZ];
     struct ethnl_req_info *req;
-} ;
+};
 
 #define SIZEOF_EVENT (offsetof(struct event, req))
 

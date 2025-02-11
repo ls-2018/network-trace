@@ -16,34 +16,30 @@
 
 enum { LINK_ROLE_UNKNOWN = 0, LINK_ROLE_CLIENT = 1, LINK_ROLE_SERVER = 2 };
 
+struct trace_icmp {
+    __u8 type;
+    __u8 code;
+};
 struct trace_conn_info {
     __u8 c_mac[6];
     __u8 d_mac[6];
-
     u16 c_port;
     u16 s_port;
-
     __u32 c_ip;
     __u32 s_ip;
     struct in6_addr c_ip6;
     struct in6_addr s_ip6;
     __u32 net_ns;
-    u16 family;
-    u16 protocol;
+    __u8 family;
+    __u8 protocol;
+    u16 sk_protocol;
     u16 seq;
     __u8 old_state;
     __u8 new_state;
+    struct trace_icmp icmp_info;
     __u8 role;
-};
 
-struct sk_meta {
-    __be64 addrs;
-    __be16 dport;
-    u16 port_num;
-    u32 netns;
-    u16 family;
-    u16 protocol;
-} __attribute__((packed));
+};
 
 struct sk_common {
     u8 state;
@@ -73,15 +69,25 @@ struct trace_socket_info {
     u64 flags;
 } __attribute__((packed));
 
+struct trace_dev_info {
+    u8 iif_name[16];
+    u8 oif_name[16];
+
+    u32 iif;
+    u32 oif;
+    u16 iif_type;
+    u16 oif_type;
+    u16 pad[2];
+};
 struct trace_nft_info {
     enum nft_trace_types type;
+    u32 verdict;
     u8 table_name[64];
     u64 table_handle;
     u8 chain_name[64];
     u64 chain_handle;
     u64 rule_handle;
     u8 jump_target[64];
-    u32 verdict;
     u8 nf_proto;
     u8 policy;
     u16 len;
@@ -92,7 +98,7 @@ struct trace_process_info {
     u8 name[MAX_PROCESS_NAME];
     __u64 pid;
     __u64 tgid;
-} ;
+};
 
 static __always_inline void fill_process_info(struct trace_process_info *p)
 {
@@ -125,17 +131,6 @@ static __always_inline void set_sk_info(struct sock *sk, struct trace_sk_info *s
     sk_info->type = BPF_CORE_READ(sk, sk_type);
 }
 
-static __always_inline void set_meta(struct sock *sk, struct sk_meta *meta)
-{
-    meta->addrs = BPF_CORE_READ(sk, __sk_common.skc_addrpair);
-    meta->dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
-    meta->port_num = BPF_CORE_READ(sk, __sk_common.skc_num);
-    meta->netns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
-    ;
-    meta->family = BPF_CORE_READ(sk, __sk_common.skc_family);
-    meta->protocol = BPF_CORE_READ(sk, sk_protocol);
-}
-
 static __always_inline void set_sk_common(struct sock *sk, struct sk_common *skc)
 {
     skc->state = BPF_CORE_READ(sk, __sk_common.skc_state);
@@ -145,25 +140,21 @@ static __always_inline void set_sk_common(struct sock *sk, struct sk_common *skc
 
 static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_info *conn_info, const __u8 type, int *err)
 {
-    const __u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
+    const __u8 family = BPF_CORE_READ(sk, __sk_common.skc_family);
     if (family != AF_INET && family != AF_INET6) {
+        *err = CLEAN_ERR_FAILED;
         return;
     }
 
-    const u16 protocol = BPF_CORE_READ(sk, sk_protocol);
-    if (protocol != IPPROTO_TCP && protocol != IPPROTO_UDP && protocol != IPPROTO_ICMP) {
+    const u16 sk_protocol = BPF_CORE_READ(sk, sk_protocol);
+    if (sk_protocol != IPPROTO_TCP && sk_protocol != IPPROTO_UDP && sk_protocol != IPPROTO_ICMP) {
+        *err = CLEAN_ERR_FAILED;
         return;
     }
 
     conn_info->family = family;
-    conn_info->protocol = protocol;
+    conn_info->sk_protocol = sk_protocol;
     conn_info->net_ns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
-
-    __u32 skc_rcv_s_addr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    if (bpf_ntohl(skc_rcv_s_addr) <= 0) {
-        *err = CLEAN_ERR_FAILED;
-        return;
-    }
 
     __u32 skc_d_port = BPF_CORE_READ(sk, __sk_common.skc_dport);
     __u32 skc_s_port = BPF_CORE_READ(sk, __sk_common.skc_num);
@@ -172,23 +163,28 @@ static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_inf
         case LINK_ROLE_SERVER:
             conn_info->s_port = skc_s_port;
             conn_info->c_port = bpf_ntohs(skc_d_port);
-            bpf_probe_read_kernel(&conn_info->s_ip, sizeof(conn_info->s_ip), &sk->__sk_common.skc_rcv_saddr);
-            bpf_probe_read_kernel(&conn_info->c_ip, sizeof(conn_info->c_ip), &sk->__sk_common.skc_daddr);
-
-            /* family == AF_INET6 */
-            bpf_probe_read_kernel(&conn_info->s_ip6, sizeof(conn_info->s_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-            bpf_probe_read_kernel(&conn_info->c_ip6, sizeof(conn_info->c_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+            if (conn_info->family == AF_INET) {
+                bpf_probe_read_kernel(&conn_info->s_ip, sizeof(conn_info->s_ip), &sk->__sk_common.skc_rcv_saddr);
+                bpf_probe_read_kernel(&conn_info->c_ip, sizeof(conn_info->c_ip), &sk->__sk_common.skc_daddr);
+            } else {
+                /* family == AF_INET6 */
+                bpf_probe_read_kernel(&conn_info->s_ip6, sizeof(conn_info->s_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+                bpf_probe_read_kernel(&conn_info->c_ip6, sizeof(conn_info->c_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+            }
             break;
 
         case LINK_ROLE_UNKNOWN:
         case LINK_ROLE_CLIENT:
             conn_info->c_port = skc_s_port;
             conn_info->s_port = bpf_ntohs(skc_d_port);
-            bpf_probe_read_kernel(&conn_info->c_ip, sizeof(conn_info->c_ip), &sk->__sk_common.skc_rcv_saddr);
-            bpf_probe_read_kernel(&conn_info->s_ip, sizeof(conn_info->s_ip), &sk->__sk_common.skc_daddr);
-            /* family == AF_INET6 */
-            bpf_probe_read_kernel(&conn_info->c_ip6, sizeof(conn_info->c_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
-            bpf_probe_read_kernel(&conn_info->s_ip6, sizeof(conn_info->s_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+            if (conn_info->family == AF_INET) {
+                bpf_probe_read_kernel(&conn_info->c_ip, sizeof(conn_info->c_ip), &sk->__sk_common.skc_rcv_saddr);
+                bpf_probe_read_kernel(&conn_info->s_ip, sizeof(conn_info->s_ip), &sk->__sk_common.skc_daddr);
+            } else {
+                /* family == AF_INET6 */
+                bpf_probe_read_kernel(&conn_info->c_ip6, sizeof(conn_info->c_ip6), &sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+                bpf_probe_read_kernel(&conn_info->s_ip6, sizeof(conn_info->s_ip6), &sk->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+            }
             break;
         default:
             break;
@@ -196,6 +192,16 @@ static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_inf
 
     conn_info->s_ip = bpf_ntohl(conn_info->s_ip);
     conn_info->c_ip = bpf_ntohl(conn_info->c_ip);
+
+    __u32 skc_rcv_s_addr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    if (bpf_ntohl(skc_rcv_s_addr) <= 0) {
+        *err = CLEAN_ERR_FAILED;
+        return;
+    }
+    if (conn_info->s_ip <= 0) {
+        *err = CLEAN_ERR_FAILED;
+        return;
+    }
 }
 
 #endif

@@ -13,52 +13,55 @@ import (
 )
 
 type nftabletraceTraceInfo struct {
-	Id      uint32
-	_       [4]byte
+	SkbHash uint32
+	Family  uint32
 	SkId    uint64
-	Family  int32
-	Iif     uint32
-	Oif     uint32
-	IifType uint16
-	OifType uint16
-	IifName [16]uint8
-	OifName [16]uint8
+	DevInfo struct {
+		IifName [16]uint8
+		OifName [16]uint8
+		Iif     uint32
+		Oif     uint32
+		IifType uint16
+		OifType uint16
+		Pad     [2]uint16
+	}
 	NftInfo struct {
 		Type        uint32
+		Verdict     uint32
 		TableName   [64]uint8
-		_           [4]byte
 		TableHandle uint64
 		ChainName   [64]uint8
 		ChainHandle uint64
 		RuleHandle  uint64
 		JumpTarget  [64]uint8
-		Verdict     uint32
 		NfProto     uint8
 		Policy      uint8
 		Len         uint16
 		Mark        uint32
-		_           [4]byte
 	}
 	ConnInfo struct {
-		C_mac    [6]uint8
-		D_mac    [6]uint8
-		C_port   uint16
-		S_port   uint16
-		C_ip     uint32
-		S_ip     uint32
-		C_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
-		S_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
-		NetNs    uint32
-		Family   uint16
-		Protocol uint16
-		Seq      uint16
-		OldState uint8
-		NewState uint8
-		Role     uint8
-		_        [3]byte
+		C_mac      [6]uint8
+		D_mac      [6]uint8
+		C_port     uint16
+		S_port     uint16
+		C_ip       uint32
+		S_ip       uint32
+		C_ip6      struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		S_ip6      struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		NetNs      uint32
+		Family     uint8
+		Protocol   uint8
+		SkProtocol uint16
+		Seq        uint16
+		OldState   uint8
+		NewState   uint8
+		IcmpInfo   struct {
+			Type uint8
+			Code uint8
+		}
+		Role uint8
+		_    [1]byte
 	}
-	Time        uint64
-	Counter     uint64
 	ProcessInfo struct {
 		Name [64]uint8
 		Pid  uint64
@@ -107,6 +110,7 @@ type nftabletraceSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type nftabletraceProgramSpecs struct {
+	FentryNftDoChain     *ebpf.ProgramSpec `ebpf:"fentry_nft_do_chain"`
 	KprobeNftTracePacket *ebpf.ProgramSpec `ebpf:"kprobe_nft_trace_packet"`
 }
 
@@ -114,9 +118,7 @@ type nftabletraceProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type nftabletraceMapSpecs struct {
-	Events     *ebpf.MapSpec `ebpf:"events"`
-	PktCounter *ebpf.MapSpec `ebpf:"pkt_counter"`
-	SampleRate *ebpf.MapSpec `ebpf:"sample_rate"`
+	Events *ebpf.MapSpec `ebpf:"events"`
 }
 
 // nftabletraceObjects contains all objects after they have been loaded into the kernel.
@@ -138,16 +140,12 @@ func (o *nftabletraceObjects) Close() error {
 //
 // It can be passed to loadNftabletraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type nftabletraceMaps struct {
-	Events     *ebpf.Map `ebpf:"events"`
-	PktCounter *ebpf.Map `ebpf:"pkt_counter"`
-	SampleRate *ebpf.Map `ebpf:"sample_rate"`
+	Events *ebpf.Map `ebpf:"events"`
 }
 
 func (m *nftabletraceMaps) Close() error {
 	return _NftabletraceClose(
 		m.Events,
-		m.PktCounter,
-		m.SampleRate,
 	)
 }
 
@@ -155,11 +153,13 @@ func (m *nftabletraceMaps) Close() error {
 //
 // It can be passed to loadNftabletraceObjects or ebpf.CollectionSpec.LoadAndAssign.
 type nftabletracePrograms struct {
+	FentryNftDoChain     *ebpf.Program `ebpf:"fentry_nft_do_chain"`
 	KprobeNftTracePacket *ebpf.Program `ebpf:"kprobe_nft_trace_packet"`
 }
 
 func (p *nftabletracePrograms) Close() error {
 	return _NftabletraceClose(
+		p.FentryNftDoChain,
 		p.KprobeNftTracePacket,
 	)
 }

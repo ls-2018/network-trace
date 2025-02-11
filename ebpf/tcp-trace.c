@@ -22,9 +22,7 @@ struct state_info {
 };
 
 struct event_t {
-    s64 print_stack_id;
-    __u64 ts_ns;
-    struct sk_meta meta;
+    __u64 cur_time;
     struct sk_common skc;
     struct trace_sk_info sk_info;
     struct trace_socket_info socket_info;
@@ -59,9 +57,9 @@ static __noinline void handle_new_connection(void *ctx, struct sock *sk, const s
     fill_process_info(&event->process);
     set_sock_info(sk, &event->socket_info);
     set_sk_info(sk, &event->sk_info);
-//    todo
-//    event->print_stack_id = bpf_get_stackid(ctx, &print_stack_map, BPF_F_FAST_STACK_CMP);
-    event->ts_ns = bpf_ktime_get_ns();
+    //    todo
+    //    event->print_stack_id = bpf_get_stackid(ctx, &print_stack_map, BPF_F_FAST_STACK_CMP);
+    event->cur_time = bpf_ktime_get_ns();
     do {
         set_conn_info(sk, &event->conn_info, states->role, err);
         event->conn_info.role = states->role;

@@ -3,7 +3,6 @@ project(ebpf-nftrace C)
 
 set(CMAKE_C_STANDARD 11)
 include_directories("./ebpf/headers")
-add_definitions(-DUSE_RING_BUF)
 
 add_library(ebpf-nftrace
         ./ebpf/ethtool-trace.c

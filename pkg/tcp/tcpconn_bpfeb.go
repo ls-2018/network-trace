@@ -13,17 +13,8 @@ import (
 )
 
 type tcpconnEventT struct {
-	PrintStackId int64
-	TsNs         uint64
-	Meta         struct {
-		Addrs    uint64
-		Dport    uint16
-		PortNum  uint16
-		Netns    uint32
-		Family   uint16
-		Protocol uint16
-	}
-	Skc struct {
+	CurTime uint64
+	Skc     struct {
 		State        uint8
 		ReusePort    uint8
 		Pad          [2]uint8
@@ -49,23 +40,29 @@ type tcpconnEventT struct {
 		Flags     uint64
 	}
 	ConnInfo struct {
-		C_mac    [6]uint8
-		D_mac    [6]uint8
-		C_port   uint16
-		S_port   uint16
-		C_ip     uint32
-		S_ip     uint32
-		C_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
-		S_ip6    struct{ In6U struct{ U6Addr8 [16]uint8 } }
-		NetNs    uint32
-		Family   uint16
-		Protocol uint16
-		Seq      uint16
-		OldState uint8
-		NewState uint8
-		Role     uint8
-		_        [3]byte
+		C_mac      [6]uint8
+		D_mac      [6]uint8
+		C_port     uint16
+		S_port     uint16
+		C_ip       uint32
+		S_ip       uint32
+		C_ip6      struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		S_ip6      struct{ In6U struct{ U6Addr8 [16]uint8 } }
+		NetNs      uint32
+		Family     uint8
+		Protocol   uint8
+		SkProtocol uint16
+		Seq        uint16
+		OldState   uint8
+		NewState   uint8
+		IcmpInfo   struct {
+			Type uint8
+			Code uint8
+		}
+		Role uint8
+		_    [1]byte
 	}
+	_       [4]byte
 	Process struct {
 		Name [64]uint8
 		Pid  uint64
