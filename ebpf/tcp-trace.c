@@ -396,3 +396,12 @@ int BPF_KPROBE(tcp_close_entry, struct sock *sk, long timeout)
     bpf_map_delete_elem(&sock_link_type, &id);
     return 0;
 }
+
+// probing the tcp_data_queue kernel function, and adding the connection
+// observed to the map.
+SEC("kprobe/tcp_data_queue")
+  int handle_tcp_data_queue(struct pt_regs *ctx) // 维护链接状态,role,throughput
+{
+    // first argument to tcp_data_queue is a struct sock*
+    struct sock *sock = (struct sock *)PT_REGS_PARM1(ctx);
+}

@@ -11,6 +11,7 @@ add_library(ebpf-nftrace
         ./ebpf/tcp-trace.c
         ./ebpf/unix-sock-trace.c
         ./ebpf/xdp-trace.c
+        ./ebpf/caretta.bpf.c
         ./ebpf/headers/counters.h
         ./ebpf/headers/lib_kprobe.h
         ./ebpf/headers/lib_tp_msg.h

@@ -4,3 +4,6 @@
 [submodule "3rd/go-nftables-demo"]
 	path = 3rd/go-nftables-demo
 	url = https://github.com/ymm135/go-nftables-demo.git
+[submodule "3rd/iptables-trace"]
+	path = 3rd/iptables-trace
+	url = https://github.com/ls-2018/iptables-trace.git
