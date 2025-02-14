@@ -7,12 +7,21 @@ JSON_CONTENT := $(shell cat ./hack/add.json | jq -c .)
 JSON_DELETE :=  $(shell cat ./hack/delete.json | jq -c .)
 SRC_FILES := $(shell find ./ebpf -maxdepth 1 -type f -name "*.c" -exec readlink -f {} \;)
 
+ARCH := $(shell uname -m)
+# https://github.com/iovisor/bcc/blob/f954eb1ec60a34ddc59535646be58085163e568f/src/cc/frontends/clang/kbuild_helper.cc#L51
+ifeq ($(ARCH), x86_64)
+    ARCH_TYPE := x86
+endif
+ifeq ($(ARCH), aarch64)
+    ARCH_TYPE := arm64
+endif
+
+
 all:
 	#bpftool btf dump file /sys/kernel/btf/vmlinux   format c > ./ebpf/headers/vmlinux.h
 	#bpftool btf dump file /sys/kernel/btf/nf_tables format c > ./ebpf/headers/btf/nf_tables.h
 	echo "#define COMPILE_LINUX_VERSION_CODE KERNEL_VERSION(${KERNEL_MAJOR}, ${KERNEL_MINOR}, ${KERNEL_PATCH})" > ebpf/headers/version.h
-
-	go generate ./...
+	TARGET_ARCH=__TARGET_ARCH_${ARCH_TYPE} go generate ./...
 	go run ./cmd/ebpf -ko ./bin/src/iptables-trace.ko
 	#go run ./cmd/ebpf -ko ./bin/src/iptables-trace.ko > ./logs/trace.log 2>&1
 
@@ -50,10 +59,14 @@ clean:
 	rm -rf bin
 	@bash -c 'mkdir -p bin/{tmp,src}'
 	find . -type f -name "*.o" | xargs -I F rm F
+	find . -type f -name "*_bpfel.go" | xargs -I F rm F
+	find . -type f -name "*_bpfeb.go" | xargs -I F rm F
 
 tidy:
 	go mod tidy
 	go mod vendor
+
+#perf trace --no-syscalls --event 'net:*' ping globo.com -c1 > /dev/null
 
 #trace-cmd record -p function_graph -O funcgraph-proc -g nft_do_chain
 #trace-cmd report

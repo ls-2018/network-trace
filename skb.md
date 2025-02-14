@@ -82,3 +82,90 @@
 // SEC("kprobe/ip_output")
 // SEC("kprobe/ip_finish_output")
 // SEC("kprobe/__kfree_skb")
+
+
+
+// 将struct sock类型的指针转化为struct tcp_sock类型的指针
+static __always_inline struct tcp_sock *tcp_sk(const struct sock *sk) { return (struct tcp_sock *)sk; }
+
+// 将struct sk_buff类型的指针转化为struct udphdr类型的指针
+static __always_inline struct udphdr *skb_to_udphdr(const struct sk_buff *skb)
+{
+    return (struct udphdr *)((BPF_CORE_READ(skb, head) +              // 报文头部偏移
+                              BPF_CORE_READ(skb, transport_header))); // 传输层部分偏移
+}
+
+// 将struct sk_buff类型的指针转化为struct tcphdr类型的指针
+static __always_inline struct tcphdr *skb_to_tcphdr(const struct sk_buff *skb)
+{
+    return (struct tcphdr *)((BPF_CORE_READ(skb, head) +              // 报文头部偏移
+                              BPF_CORE_READ(skb, transport_header))); // 传输层部分偏移
+}
+
+// 将struct sk_buff类型的指针转化为struct iphdr类型的指针
+static __always_inline struct iphdr *skb_to_iphdr(const struct sk_buff *skb) { return (struct iphdr *)(BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, network_header)); }
+
+// 将struct sk_buff类型的指针转化为struct ipv6hdr类型的指针
+static __always_inline struct ipv6hdr *skb_to_ipv6hdr(const struct sk_buff *skb) { return (struct ipv6hdr *)(BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, network_header)); }
+
+
+
+
+#define TCP_SKB_CB(__skb) ((struct tcp_skb_cb *)&((__skb)->cb[0]))
+
+    struct tcp_skb_cb *tcb = TCP_SKB_CB(skb);         // 数据包信息
+    u32 start_seq = BPF_CORE_READ(tcb, seq);          // 开始序列号
+    u32 end_seq = BPF_CORE_READ(tcb, end_seq);        // 结束序列号
+    struct tcp_sock *tp = tcp_sk(sk);                 // 套接字信息
+    u32 rcv_wup = BPF_CORE_READ(tp, rcv_wup);         // 接收方已经确认并准备接收的数据最后一个字节的序列号
+    u32 rcv_nxt = BPF_CORE_READ(tp, rcv_nxt);         // 期望发送发下次发送的数据字节序列号
+    u32 rcv_wnd = BPF_CORE_READ(tp, rcv_wnd);         // tcp接收窗口大小
+    u32 receive_window = rcv_wup + rcv_nxt - rcv_wnd; // 当前可用的接收窗口
+    receive_window = 0;
+
+    if (end_seq >= rcv_wup && rcv_nxt + receive_window >= start_seq) {
+        // bpf_printk("error_identify: tcp seq validated. \n");
+        return 0;
+        // 检查数据包序列号是否在接收窗口内
+    }
+
+
+struct tcphdr *tcp = skb_to_tcphdr(skb);
+int doff = BPF_CORE_READ_BITFIELD_PROBED(tcp, doff); // 得用bitfield_probed
+// 读取tcp头部中的数据偏移字段
+u8 *user_data = (u8 *)((u8 *)tcp + (doff * 4));
+// 计算tcp的负载开始位置就是tcp头部之后的数据，将tcp指针指向tcp头部位置将其转换成unsigned
+// char类型
+// doff *
+// 4数据偏移值(tcp的头部长度20个字节)乘以4计算tcp头部实际字节长度，32位为单位就是4字节
+bpf_probe_read_str(packet->data, sizeof(packet->data), user_data); // 将tcp负载数据读取到packet->data
+
+
+```
+out_ipv4:
+    kprobe/tcp_sendmsg
+    kprobe/ip_queue_xmit
+    kprobe/dev_queue_xmit
+    kprobe/dev_hard_start_xmit
+
+out_ipv6:
+    kprobe/tcp_sendmsg
+    kprobe/inet6_csk_xmit
+    kprobe/dev_queue_xmit
+    kprobe/dev_hard_start_xmit
+
+
+in_ipv4:
+    kprobe/eth_type_trans
+    kprobe/ip_rcv_core.isra.0
+    kprobe/tcp_v4_rcv
+    kprobe/tcp_v4_do_rcv
+    kprobe/skb_copy_datagram_iter
+
+in_ipv6:
+    kprobe/eth_type_trans
+    kprobe/ip6_rcv_core.isra.0
+    kprobe/tcp_v6_rcv
+    kprobe/tcp_v6_do_rcv
+    kprobe/skb_copy_datagram_iter
+```

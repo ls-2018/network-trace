@@ -33,6 +33,7 @@
 
 
 
+// const volatile 定义只会在 eBPF 程序的只读数据段（rodata）中创建只读变量。它们的初始值为 0
 
 
 ``` tcx
@@ -492,3 +493,5 @@ struct nsproxy *namespaceproxy = READ_KERN(task->nsproxy);
 char *uts_name = READ_KERN(READ_KERN(namespaceproxy->uts_ns)->name.nodename);
 bpf_probe_read_str(&event->nodename, 65, uts_name);
 bpf_get_current_comm(&event->comm, sizeof(event->comm));
+
+- https://medium.com/@dipakkrdas/netfilter-and-iptables-f8a946bb83af

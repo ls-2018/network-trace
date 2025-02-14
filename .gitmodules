@@ -7,3 +7,9 @@
 [submodule "3rd/iptables-trace"]
 	path = 3rd/iptables-trace
 	url = https://github.com/ls-2018/iptables-trace.git
+[submodule "3rd/ntk148v.github.io"]
+	path = 3rd/ntk148v.github.io
+	url = https://github.com/ntk148v/ntk148v.github.io.git
+[submodule "3rd/linux-network-performance-parameters"]
+	path = 3rd/linux-network-performance-parameters
+	url = https://github.com/leandromoreira/linux-network-performance-parameters.git

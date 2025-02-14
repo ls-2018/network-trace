@@ -13,6 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/gopacket v1.1.19
 	github.com/iovisor/gobpf v0.2.0
+	github.com/networkplumbing/go-nft v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/spf13/pflag v1.0.5

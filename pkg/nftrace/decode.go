@@ -132,7 +132,6 @@ func (p IpProto) String() string {
 }
 
 func Ip2String(isIp6 bool, ip4 uint32, ip6 []byte) string {
-	isIp6 = true
 	if isIp6 {
 		return net.IP(ip6[:]).String()
 	}

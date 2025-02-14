@@ -12,26 +12,21 @@ jobs:
       contents: write
       id-token: write
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v3
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - 
-        name: Set Up QEMU
+      - name: Set Up QEMU
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
-      -
-        name: Login to Quay.io
+      - name: Login to Quay.io
         uses: docker/login-action@v2
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      -
-        name: Build & Push Docker Image
+      - name: Build & Push Docker Image
         uses: docker/build-push-action@v3
         with:
           context: .
@@ -40,15 +35,13 @@ jobs:
           cache-to: type=gha,mode=max
           tags: quay.io/groundcover/caretta:${{ github.ref_name	 }}
           platforms: linux/arm64,linux/amd64
-      -
-        name: Checkout Helm Repo
+      - name: Checkout Helm Repo
         uses: actions/checkout@v3
         with:
           path: helm-repo
           repository: groundcover-com/charts
           token: ${{ secrets.HELM_CHARTS_REPO_KEY }}
-      -
-        name: Publish Chart
+      - name: Publish Chart
         working-directory: helm-repo
         env:
           GITHUB_TAG: ${{ github.ref_name	 }}

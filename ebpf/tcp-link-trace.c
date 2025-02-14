@@ -17,12 +17,13 @@ struct proto_accept_arg {
 struct state_info {
     __u8 old_state;
     __u8 new_state;
-    __u32 seq;
-    __u8 role;
+    __u32 loc;
+    enum link_role role;
 };
 
 struct event_t {
     __u64 cur_time;
+    __u64 skb_id;
     struct sk_common skc;
     struct trace_sk_info sk_info;
     struct trace_socket_info socket_info;
@@ -63,7 +64,7 @@ static __noinline void handle_new_connection(void *ctx, struct sock *sk, const s
     do {
         set_conn_info(sk, &event->conn_info, states->role, err);
         event->conn_info.role = states->role;
-        event->conn_info.seq = states->seq;
+        event->conn_info.loc = states->loc;
         event->conn_info.old_state = states->old_state;
         event->conn_info.new_state = states->new_state;
     } while (false);
@@ -264,15 +265,14 @@ int BPF_KPROBE(k_set_state, struct sock *sk, int new_state)
         .new_state = new_state,
     };
     if (old_state == TCP_SYN_SENT && new_state == TCP_ESTABLISHED) {
-        info.seq = 5;
+        info.loc = 5;
         info.role = LINK_ROLE_CLIENT;
         bpf_map_update_elem(&sock_link_type, &id, &info.role, BPF_ANY);
         handle_new_connection(NULL, sk, &info);
         goto exit;
     }
-
     if (old_state == TCP_SYN_RECV && new_state == TCP_ESTABLISHED) {
-        info.seq = 6;
+        info.loc = 6;
         info.role = LINK_ROLE_SERVER;
         bpf_map_update_elem(&sock_link_type, &id, &info.role, BPF_ANY);
         handle_new_connection(NULL, sk, &info);
@@ -281,7 +281,7 @@ int BPF_KPROBE(k_set_state, struct sock *sk, int new_state)
 
     const u8 *val = bpf_map_lookup_elem(&sock_link_type, &id);
     if (val) {
-        info.seq = 7;
+        info.loc = 7;
         info.role = *val;
         handle_new_connection(NULL, sk, &info);
     }
@@ -400,8 +400,9 @@ int BPF_KPROBE(tcp_close_entry, struct sock *sk, long timeout)
 // probing the tcp_data_queue kernel function, and adding the connection
 // observed to the map.
 SEC("kprobe/tcp_data_queue")
-  int handle_tcp_data_queue(struct pt_regs *ctx) // 维护链接状态,role,throughput
+int handle_tcp_data_queue(struct pt_regs *ctx) // 维护链接状态,role,throughput
 {
     // first argument to tcp_data_queue is a struct sock*
-    struct sock *sock = (struct sock *)PT_REGS_PARM1(ctx);
+    //    struct sock *sock = (struct sock *)PT_REGS_PARM1(ctx);
+    return 0;
 }

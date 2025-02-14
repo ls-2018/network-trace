@@ -72,9 +72,8 @@
 #define ETH_P_IPV6 0x86DD      /* IPv6 over bluebook		*/
 #define ETH_P_PAUSE 0x8808     /* IEEE Pause frames. See 802.3 31B */
 #define ETH_P_SLOW 0x8809      /* Slow Protocol. See 802.3ad 43B */
-#define ETH_P_WCCP                                                                                                                                                                                                                             \
-    0x883E                    /* Web-cache coordination protocol                                                                                                                                                                               \
-                               * defined in draft-wilson-wrec-wccp-v2-00.txt */
+#define ETH_P_WCCP 0x883E      /* Web-cache coordination protocol, defined in draft-wilson-wrec-wccp-v2-00.txt */
+
 #define ETH_P_MPLS_UC 0x8847  /* MPLS Unicast traffic		*/
 #define ETH_P_MPLS_MC 0x8848  /* MPLS Multicast traffic	*/
 #define ETH_P_ATMMPOA 0x884c  /* MultiProtocol Over ATM	*/

@@ -7,10 +7,10 @@
 #define MAX_MAP_ENTRIES 100
 
 struct conn_track {
-    u64 s_ip;
-    u64 d_ip;
-    u32 s_port;
-    u32 d_port;
+    u64 src_ip;
+    u64 dest_ip;
+    u32 src_port;
+    u32 dest_port;
 };
 
 struct flow_count {
@@ -85,18 +85,11 @@ int trace_packets(struct xdp_md *ctx)
                 break;
         }
 
-        ct.s_ip = bpf_ntohl(iph->saddr);
-        ct.d_ip = bpf_ntohl(iph->daddr);
-        ct.s_port = bpf_ntohs(src_port);
-        ct.d_port = bpf_ntohs(dest_port);
+        ct.src_ip = bpf_ntohl(iph->saddr);
+        ct.dest_ip = bpf_ntohl(iph->daddr);
+        ct.src_port = bpf_ntohs(src_port);
+        ct.dest_port = bpf_ntohs(dest_port);
     };
-    //    bpf_debug_printk("eth proto : %d ", bpf_ntohs(eth->h_proto)); // ETH_P_IP
-    //    bpf_debug_printk("iphdr      tos: %d", iph->tos);
-    //    bpf_debug_printk("iphdr  tot_len: %d", bpf_ntohs(iph->tot_len));
-    //    bpf_debug_printk("iphdr       id: %d", bpf_ntohs(iph->id));
-    //    bpf_debug_printk("iphdr frag_off: %d", bpf_ntohs(iph->frag_off));
-    //    bpf_debug_printk("iphdr      ttl: %d", iph->ttl);
-
     //    struct flow_count *stat = bpf_map_lookup_elem(&xdp_stats_map, &ct);
     //    if (stat) {
     //        guard_spinlock(&stat->lock);

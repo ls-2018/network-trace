@@ -4,7 +4,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"hash/fnv"
-	"strconv"
 )
 
 var (
@@ -38,17 +37,17 @@ type NetworkLink struct {
 
 func main() {
 
-	linksMetrics.With(prometheus.Labels{
-		"link_id":          strconv.Itoa(int(fnvHash(link.Client.Name+link.Client.Namespace+link.Server.Name+link.Server.Namespace) + link.Role)),
-		"client_id":        strconv.Itoa(int(fnvHash(link.Client.Name + link.Client.Namespace))),
-		"client_name":      link.Client.Name,
-		"client_namespace": link.Client.Namespace,
-		"client_kind":      link.Client.Kind,
-		"server_id":        strconv.Itoa(int(fnvHash(link.Server.Name + link.Server.Namespace))),
-		"server_name":      link.Server.Name,
-		"server_namespace": link.Server.Namespace,
-		"server_kind":      link.Server.Kind,
-		"server_port":      strconv.Itoa(int(link.ServerPort)),
-		"role":             strconv.Itoa(int(link.Role)),
-	}).Set(float64(throughput))
+	//linksMetrics.With(prometheus.Labels{
+	//	"link_id":          strconv.Itoa(int(fnvHash(link.Client.Name+link.Client.Namespace+link.Server.Name+link.Server.Namespace) + link.Role)),
+	//	"client_id":        strconv.Itoa(int(fnvHash(link.Client.Name + link.Client.Namespace))),
+	//	"client_name":      link.Client.Name,
+	//	"client_namespace": link.Client.Namespace,
+	//	"client_kind":      link.Client.Kind,
+	//	"server_id":        strconv.Itoa(int(fnvHash(link.Server.Name + link.Server.Namespace))),
+	//	"server_name":      link.Server.Name,
+	//	"server_namespace": link.Server.Namespace,
+	//	"server_kind":      link.Server.Kind,
+	//	"server_port":      strconv.Itoa(int(link.ServerPort)),
+	//	"role":             strconv.Itoa(int(link.Role)),
+	//}).Set(float64(throughput))
 }

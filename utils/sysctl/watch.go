@@ -1,7 +1,7 @@
 package main
 
 //
-////go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types sysctl ./../../ebpf/sysctl.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
+// //go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types sysctl ./../../ebpf/sysctl.c -- -D${TARGET_ARCH} -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 //
 //func main() {
 //	if err := rlimit.RemoveMemlock(); err != nil {

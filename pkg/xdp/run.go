@@ -23,7 +23,7 @@ func init() {
 	flag.IntVar(&mode, "xdpMode", 2, fmt.Sprintf("xdp attach mode: generic:%d,driver:%d,offload:%d", link.XDPGenericMode, link.XDPDriverMode, link.XDPOffloadMode))
 }
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types xdptrace ./../../ebpf/xdp-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types xdptrace ./../../ebpf/xdp-trace.c -- -D${TARGET_ARCH} -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 func Run(ctx context.Context) {
 	interfaces, err := net.Interfaces()
 	if err != nil {

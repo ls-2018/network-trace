@@ -1,4 +1,5 @@
 #include "nftrace.h"
+#include "define/if_ether.h"
 
 struct trace_info {
     u32 skb_hash;
@@ -32,39 +33,47 @@ static __always_inline void handle_nft_ipv4(int *err, struct trace_info *trace, 
         return;
     }
     trace->conn_info.protocol = BPF_CORE_READ(iph, protocol);
-    trace->conn_info.c_ip = bpf_ntohl(BPF_CORE_READ(iph, saddr));
-    trace->conn_info.s_ip = bpf_ntohl(BPF_CORE_READ(iph, daddr));
-
+    trace->conn_info.src_ip = bpf_ntohl(BPF_CORE_READ(iph, saddr));
+    trace->conn_info.dest_ip = bpf_ntohl(BPF_CORE_READ(iph, daddr));
     trace->nft_info.len = bpf_ntohs(BPF_CORE_READ(iph, tot_len));
-    if (trace->conn_info.protocol == IPPROTO_TCP) {
-        struct tcphdr *tcph = (void *)((void *)iph + (BPF_CORE_READ_BITFIELD_PROBED(iph, ihl) * 4));
-        if ((void *)tcph + sizeof(*tcph) > end) {
-            *err = CLEAN_ERR_FAILED;
-            return;
-        }
 
-        trace->conn_info.c_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
-        trace->conn_info.s_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
-    } else if (trace->conn_info.protocol == IPPROTO_UDP) {
-        struct udphdr *udph = (void *)((void *)iph + (BPF_CORE_READ_BITFIELD_PROBED(iph, ihl) * 4));
-        if ((void *)udph + sizeof(*udph) > end) {
-            *err = CLEAN_ERR_FAILED;
-            return;
+    switch (trace->conn_info.protocol) {
+        case IPPROTO_TCP: {
+            struct tcphdr *tcph = (void *)iph + (BPF_CORE_READ_BITFIELD_PROBED(iph, ihl) * 4);
+            if ((void *)tcph + sizeof(*tcph) > end) {
+                *err = CLEAN_ERR_FAILED;
+                return;
+            }
+            trace->conn_info.src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
+            trace->conn_info.dest_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
+            break;
         }
-        trace->conn_info.c_port = bpf_ntohs(BPF_CORE_READ(udph, source));
-        trace->conn_info.s_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
-    } else if (trace->conn_info.protocol == IPPROTO_ICMP) {
-        struct icmphdr *ich = (void *)((void *)iph + sizeof(*iph));
-        if ((void *)ich + sizeof(*ich) > end) {
-            *err = CLEAN_ERR_FAILED;
-            return;
+        case IPPROTO_UDP: {
+            struct udphdr *udph = (void *)iph + (BPF_CORE_READ_BITFIELD_PROBED(iph, ihl) * 4);
+            if ((void *)udph + sizeof(*udph) > end) {
+                *err = CLEAN_ERR_FAILED;
+                return;
+            }
+            trace->conn_info.src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
+            trace->conn_info.dest_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
+            break;
         }
-        trace->conn_info.icmp_info.code = bpf_ntohs(BPF_CORE_READ(ich, code));
-        trace->conn_info.icmp_info.type = bpf_ntohs(BPF_CORE_READ(ich, type));
-    } else {
-        *err = CLEAN_ERR_FAILED;
+        case IPPROTO_ICMP: {
+            struct icmphdr *ich = (void *)iph + sizeof(*iph);
+            if ((void *)ich + sizeof(*ich) > end) {
+                *err = CLEAN_ERR_FAILED;
+                return;
+            }
+            trace->conn_info.icmp_info.code = bpf_ntohs(BPF_CORE_READ(ich, code));
+            trace->conn_info.icmp_info.type = bpf_ntohs(BPF_CORE_READ(ich, type));
+            break;
+        }
+        default: {
+            *err = CLEAN_ERR_FAILED;
+        }
     }
 }
+
 static __always_inline void handle_nft_ipv6(int *err, struct trace_info *trace, const struct sk_buff *skb)
 {
     void *head = BPF_CORE_READ(skb, head);
@@ -76,8 +85,8 @@ static __always_inline void handle_nft_ipv6(int *err, struct trace_info *trace, 
     }
 
     trace->conn_info.protocol = BPF_CORE_READ(ip6h, nexthdr);
-    trace->conn_info.c_ip6 = BPF_CORE_READ(ip6h, saddr);
-    trace->conn_info.s_ip6 = BPF_CORE_READ(ip6h, daddr);
+    trace->conn_info.src_ip6 = BPF_CORE_READ(ip6h, saddr);
+    trace->conn_info.dest_ip6 = BPF_CORE_READ(ip6h, daddr);
     trace->nft_info.len = bpf_ntohs(BPF_CORE_READ(ip6h, payload_len));
 
     if (trace->conn_info.protocol == IPPROTO_TCP) {
@@ -87,8 +96,8 @@ static __always_inline void handle_nft_ipv6(int *err, struct trace_info *trace, 
             return;
         }
 
-        trace->conn_info.c_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
-        trace->conn_info.s_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
+        trace->conn_info.src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
+        trace->conn_info.dest_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
     } else if (trace->conn_info.protocol == IPPROTO_UDP) {
         struct udphdr *udph = (void *)((void *)ip6h + sizeof(*ip6h));
         if ((void *)udph + sizeof(*udph) > end) {
@@ -96,8 +105,8 @@ static __always_inline void handle_nft_ipv6(int *err, struct trace_info *trace, 
             return;
         }
 
-        trace->conn_info.c_port = bpf_ntohs(BPF_CORE_READ(udph, source));
-        trace->conn_info.s_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
+        trace->conn_info.src_port = bpf_ntohs(BPF_CORE_READ(udph, source));
+        trace->conn_info.dest_port = bpf_ntohs(BPF_CORE_READ(udph, dest));
     } else if (trace->conn_info.protocol == IPPROTO_ICMPV6) {
         struct icmp6hdr *ic6h = (void *)((void *)ip6h + sizeof(*ip6h));
         if ((void *)ic6h + sizeof(*ic6h) > end) {
@@ -121,15 +130,29 @@ static __always_inline void fill_trace_pkt_info(int *err, struct trace_info *tra
         *err = CLEAN_ERR_FAILED;
         return;
     }
+    struct ethhdr *eth;
     if (skb_mac_header_was_set(skb)) {
-        struct ethhdr *eth = (struct ethhdr *)skb_mac_header(skb);
+        eth = (struct ethhdr *)skb_mac_header(skb);
         if ((void *)eth + sizeof(*eth) > end) {
             *err = CLEAN_ERR_FAILED;
             return;
         }
-        bpf_probe_read_kernel(trace->conn_info.c_mac, sizeof(trace->conn_info.c_mac), BPF_CORE_READ(eth, h_source));
-        bpf_probe_read_kernel(trace->conn_info.d_mac, sizeof(trace->conn_info.d_mac), BPF_CORE_READ(eth, h_dest));
+    } else {
+        *err = CLEAN_ERR_FAILED;
+        return;
     }
+    switch (_ntohs(BPF_CORE_READ(eth, h_proto))) {
+        case ETH_P_IPV6:
+            break;
+        case ETH_P_IP:
+            break;
+        default:
+            return;
+    }
+
+    bpf_probe_read_kernel(trace->conn_info.src_mac, sizeof(trace->conn_info.src_mac), BPF_CORE_READ(eth, h_source));
+    bpf_probe_read_kernel(trace->conn_info.dest_mac, sizeof(trace->conn_info.dest_mac), BPF_CORE_READ(eth, h_dest));
+
     switch (BPF_CORE_READ(pkt, state, pf)) {
         case NFPROTO_IPV4:
             handle_nft_ipv4(err, trace, skb);
@@ -138,10 +161,9 @@ static __always_inline void fill_trace_pkt_info(int *err, struct trace_info *tra
             handle_nft_ipv6(err, trace, skb);
             break;
         default:
-            break;
+            return;
     }
 }
-// ip_hdr udp_hdr ipv6_hdr eth_hdr nlmsg_hdr tcp_hdr
 
 #if COMPILE_LINUX_VERSION_CODE < KERNEL_VERSION(5, 19, 0)
 static __always_inline void fill_trace(int *err, struct trace_info *trace, const struct nft_pktinfo *pkt, const struct nft_verdict *verdict, const struct nft_rule *rule, struct nft_traceinfo *info)
@@ -200,9 +222,9 @@ int BPF_KPROBE(kprobe_nft_trace_packet, const struct nft_pktinfo *pkt, const str
     fill_trace(err, trace, pkt, verdict, rule, info);
 #endif
 
-    //     if (*err == CLEAN_ERR_INIT) {
-    *err = CLEAN_ERR_SUCCESS;
-    //     }
+    if (*err == CLEAN_ERR_INIT) {
+        *err = CLEAN_ERR_SUCCESS;
+    }
     return 0;
 }
 

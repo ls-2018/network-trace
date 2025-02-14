@@ -8,10 +8,7 @@ package.json
 ecc
 ecli
 .idea
-.DS_Store
-*/.DS_Store
-*/*/.DS_Store
-*/*/*/.DS_Store
-*/*/*/*/.DS_Store
-*/*/*/*/*/.DS_Store
+**/.DS_Store
 cmake-build-debug
+**/*_bpfel.go
+**/*_bpfeb.go

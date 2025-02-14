@@ -12,7 +12,7 @@ import (
 	"log"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types iptablestrace ./../../ebpf/iptables-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types iptablestrace ./../../ebpf/iptables-trace.c -- -D${TARGET_ARCH} -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 var ko string
 
 func init() {

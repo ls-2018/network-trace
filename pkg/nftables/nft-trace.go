@@ -18,7 +18,7 @@ import (
 	"unsafe"
 )
 
-//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace-trace.c -- -D__TARGET_ARCH_x86 -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
+//go:generate go run -mod=readonly github.com/cilium/ebpf/cmd/bpf2go -no-global-types -type trace_info nftabletrace ./../../ebpf/nftrace-trace.c -- -D${TARGET_ARCH} -I./../../ebpf/headers -Wall -Wno-unused-variable  -Wno-unused-function
 
 func Run(ctx context.Context, opt options.Options) {
 	nft.Add()
@@ -74,8 +74,9 @@ func Run(ctx context.Context, opt options.Options) {
 			if ev.NftInfo.RuleHandle == 0 {
 				continue
 			}
-			s := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.C_ip, ev.ConnInfo.C_ip6.In6U.U6Addr8[:])
-			d := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.S_ip, ev.ConnInfo.S_ip6.In6U.U6Addr8[:])
+			fmt.Println("---->", ev.ConnInfo.SrcIp, ev.ConnInfo.SrcIp6.In6U.U6Addr8[:])
+			s := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.SrcIp, ev.ConnInfo.SrcIp6.In6U.U6Addr8[:])
+			d := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.DestIp, ev.ConnInfo.DestIp6.In6U.U6Addr8[:])
 			log.Printf(
 				//"process:%-20s pid:%-6d skId:%d id:%-10d, type:%s, family:%s, tbl_name:%-6s tbl_handle:%d, chain_name:%s, chain_handle:%d, rule_handle:%-5d, verdict:%-8s, "+
 				//	"jt:%-20s, nfproto:%d, policy:%s, makr:%-5d, iif:%d, iif_type:%d, iif_name:%s, oif:%d, oif_type:%d, oif_name:%s, "+
@@ -104,11 +105,11 @@ func Run(ctx context.Context, opt options.Options) {
 				ev.DevInfo.Oif,
 				ev.DevInfo.OifType,
 				unix.ByteSliceToString(ev.DevInfo.OifName[:]),
-				fmt.Sprintf("%s:%v", s, ev.ConnInfo.C_port),
-				fmt.Sprintf("%s:%v", d, ev.ConnInfo.S_port),
+				fmt.Sprintf("%s:%v", s, ev.ConnInfo.SrcPort),
+				fmt.Sprintf("%s:%v", d, ev.ConnInfo.DestPort),
 				nftrace.IpProto(ev.ConnInfo.Protocol).String(),
-				net.HardwareAddr(ev.ConnInfo.C_mac[:]),
-				net.HardwareAddr(ev.ConnInfo.D_mac[:]),
+				net.HardwareAddr(ev.ConnInfo.SrcMac[:]),
+				net.HardwareAddr(ev.ConnInfo.DestMac[:]),
 				ev.NftInfo.Len,
 				fmt.Sprintf("%d", ev.ConnInfo.SkProtocol),
 			)
