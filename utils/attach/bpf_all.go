@@ -59,6 +59,8 @@ func AttachAll(spec *ebpf.CollectionSpec, obj *ebpf.Collection) func() {
 				KernelFuncName: ss[2],
 				ProgramName:    name,
 			})
+        default:
+            log.Printf("unknown sec %s", prog.SectionName)
 		}
 	}
 

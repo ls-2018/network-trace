@@ -58,7 +58,7 @@ struct sk_common {
 } __attribute__((packed));
 
 struct trace_sk_info {
-    u64 sk_id;
+    u64 sock_id;
     u32 rx_dst_ifindex;
     u32 backlog_len;
     u32 rcv_buff;
@@ -128,7 +128,7 @@ static __always_inline void set_sock_info(struct sock *sk, struct trace_socket_i
 
 static __always_inline void set_sk_info(struct sock *sk, struct trace_sk_info *sk_info)
 {
-    sk_info->sk_id = (u64)sk;
+    sk_info->sock_id = (u64)sk;
     sk_info->rx_dst_ifindex = BPF_CORE_READ(sk, sk_rx_dst_ifindex);
     sk_info->backlog_len = BPF_CORE_READ(sk, sk_backlog.len);
     sk_info->rcv_buff = BPF_CORE_READ(sk, sk_rcvbuf);
@@ -151,8 +151,20 @@ static __always_inline void set_sk_common(struct sock *sk, struct sk_common *skc
 #define inet_dport sk.__sk_common.skc_dport
 #define inet_num sk.__sk_common.skc_num
 
-static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_info *conn_info, const __u8 type, int *err)
+struct state_info {
+    __u8 old_state;
+    __u8 new_state;
+    __u32 loc;
+    enum link_role role;
+};
+
+static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_info *conn_info, const struct state_info *states, int *err)
 {
+    conn_info->role = states->role;
+    conn_info->loc = states->loc;
+    conn_info->old_state = states->old_state;
+    conn_info->role = states->role;
+    conn_info->new_state = states->new_state;
     // struct sock wraps struct tcp_sock and struct inet_sock as its first member
     struct tcp_sock *tcp = (struct tcp_sock *)sk;
     struct inet_sock *inet = (struct inet_sock *)sk;
@@ -180,7 +192,6 @@ static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_inf
     conn_info->family = family;
     conn_info->sk_protocol = sk_protocol;
     conn_info->net_ns = BPF_CORE_READ(sk, __sk_common.skc_net.net, ns.inum);
-
     conn_info->dest_port = BPF_CORE_READ(sk, __sk_common.skc_num);
     conn_info->src_port = bpf_ntohs(BPF_CORE_READ(sk, __sk_common.skc_dport));
     if (conn_info->family == AF_INET) {
@@ -193,7 +204,6 @@ static __always_inline void set_conn_info(struct sock *sk, struct trace_conn_inf
             *err = CLEAN_ERR_FAILED;
             return;
         }
-
     } else {
         BPF_CORE_READ_INTO(&conn_info->src_ip6, sk, __sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
         BPF_CORE_READ_INTO(&conn_info->dest_ip6, sk, __sk_common.skc_v6_daddr.in6_u.u6_addr32);

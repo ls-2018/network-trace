@@ -1,9 +1,12 @@
 #include "common.h"
 
+#define MAX_ERRNO 4095
+#define IS_ERR_VALUE(x) unlikely((unsigned long)(void *)(x) >= (unsigned long)-MAX_ERRNO)
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, uid_t);
-    __type(value, u8);
+    __type(value, struct sock **);
     __uint(max_entries, 10000000);
 } sock_link_type SEC(".maps");
 
@@ -14,16 +17,8 @@ struct proto_accept_arg {
     bool kern;
 };
 
-struct state_info {
-    __u8 old_state;
-    __u8 new_state;
-    __u32 loc;
-    enum link_role role;
-};
-
 struct event_t {
     __u64 cur_time;
-    __u64 skb_id;
     struct sk_common skc;
     struct trace_sk_info sk_info;
     struct trace_socket_info socket_info;
@@ -45,6 +40,20 @@ struct {
     __uint(value_size, MAX_STACK_DEPTH * sizeof(u64));
 } print_stack_map SEC(".maps");
 
+struct tcp_fd_info {
+    __u64 file;
+    __u64 new_file;
+    u8 cur_state;
+    u8 role;
+};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, __u64);
+    __type(value, struct tcp_fd_info);
+    __uint(max_entries, 1024);
+} fd_info_map SEC(".maps");
+
 static __noinline void handle_new_connection(void *ctx, struct sock *sk, const struct state_info *states)
 {
     struct event_t *event;
@@ -61,35 +70,12 @@ static __noinline void handle_new_connection(void *ctx, struct sock *sk, const s
     //    todo
     //    event->print_stack_id = bpf_get_stackid(ctx, &print_stack_map, BPF_F_FAST_STACK_CMP);
     event->cur_time = bpf_ktime_get_ns();
-    do {
-        set_conn_info(sk, &event->conn_info, states->role, err);
-        event->conn_info.role = states->role;
-        event->conn_info.loc = states->loc;
-        event->conn_info.old_state = states->old_state;
-        event->conn_info.new_state = states->new_state;
-    } while (false);
+    set_conn_info(sk, &event->conn_info, states, err);
 
     if (*err == CLEAN_ERR_INIT) {
         *err = CLEAN_ERR_SUCCESS;
     }
 }
-
-#define MAX_ERRNO 4095
-#define IS_ERR_VALUE(x) unlikely((unsigned long)(void *)(x) >= (unsigned long)-MAX_ERRNO)
-
-struct tcp_fd_info {
-    __u64 file;
-    __u64 new_file;
-    u8 cur_state;
-    u8 role;
-};
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, __u64);
-    __type(value, struct tcp_fd_info);
-    __uint(max_entries, 1024);
-} fd_info_map SEC(".maps");
 
 static __always_inline __u64 get_stack_id(void)
 {
@@ -224,27 +210,30 @@ int BPF_PROG(fexit___sys_accept4, int fd, struct sockaddr *uservaddr, int addrle
 SEC("fentry/tcp_v4_connect") // client
 int BPF_PROG(fentry_tcp_v4_connect, struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
-    const u64 id = (u64)(void *)sk;
+    // const u64 id = (u64)(void *)sk;
     const u8 un = LINK_ROLE_CLIENT;
-    bpf_map_lookup_or_try_init(&sock_link_type, &id, &un);
+    bpf_map_update_elem(&sock_link_type, &sk, &un, BPF_ANY);
+    // bpf_map_lookup_or_try_init(&sock_link_type, &sk, &un);
     return BPF_OK;
 }
 
 SEC("fentry/tcp_v6_connect") // client
 int BPF_PROG(fentry_tcp_v6_connect, struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
-    const u64 id = (u64)(void *)sk;
+    // const u64 id = (u64)(void *)sk;
     const u8 un = LINK_ROLE_CLIENT;
-    bpf_map_lookup_or_try_init(&sock_link_type, &id, &un);
+    bpf_map_update_elem(&sock_link_type, &sk, &un, BPF_ANY);
+    // bpf_map_lookup_or_try_init(&sock_link_type,&sk, &un);
     return BPF_OK;
 }
 
 SEC("fentry/inet_csk_accept") // server
 int BPF_PROG(fexit_inet_csk_accept, struct sock *sk, struct proto_accept_arg *arg)
 {
-    const u64 id = (u64)(void *)sk;
+    // const u64 id = (u64)(void *)sk;
     const u8 un = LINK_ROLE_SERVER;
-    bpf_map_lookup_or_try_init(&sock_link_type, &id, &un);
+    bpf_map_update_elem(&sock_link_type, &sk, &un, BPF_ANY);
+    // bpf_map_lookup_or_try_init(&sock_link_type, &sk, &un);
     return BPF_OK;
 }
 
@@ -257,9 +246,6 @@ SEC("kprobe/tcp_set_state")
 int BPF_KPROBE(k_set_state, struct sock *sk, int new_state)
 {
     const u8 old_state = BPF_CORE_READ(sk, sk_state);
-    // const u64 id = BPF_CORE_READ(sk, sk_uid.val); // 全是0
-    const u64 id = (u64)(void *)sk;
-
     struct state_info info = {
         .old_state = old_state,
         .new_state = new_state,
@@ -267,25 +253,28 @@ int BPF_KPROBE(k_set_state, struct sock *sk, int new_state)
     if (old_state == TCP_SYN_SENT && new_state == TCP_ESTABLISHED) {
         info.loc = 5;
         info.role = LINK_ROLE_CLIENT;
-        bpf_map_update_elem(&sock_link_type, &id, &info.role, BPF_ANY);
+        bpf_map_update_elem(&sock_link_type, &sk, &info.role, BPF_ANY);
         handle_new_connection(NULL, sk, &info);
         goto exit;
     }
     if (old_state == TCP_SYN_RECV && new_state == TCP_ESTABLISHED) {
         info.loc = 6;
         info.role = LINK_ROLE_SERVER;
-        bpf_map_update_elem(&sock_link_type, &id, &info.role, BPF_ANY);
+        bpf_map_update_elem(&sock_link_type, &sk, &info.role, BPF_ANY);
         handle_new_connection(NULL, sk, &info);
         goto exit;
     }
 
-    const u8 *val = bpf_map_lookup_elem(&sock_link_type, &id);
+    const u8 *val = bpf_map_lookup_elem(&sock_link_type, &sk);
     if (val) {
         info.loc = 7;
         info.role = *val;
         handle_new_connection(NULL, sk, &info);
     }
 exit:
+    if (new_state == TCP_CLOSE) {
+        bpf_map_delete_elem(&sock_link_type, &sk);
+    }
     return 0;
 }
 
@@ -358,8 +347,7 @@ exit:
 SEC("kprobe/tcp_v4_destroy_sock")
 int BPF_KPROBE(k_tcp_v4_destroy_sock, struct sock *sk)
 {
-    const u64 id = (u64)(void *)sk;
-    bpf_map_delete_elem(&sock_link_type, &id);
+    bpf_map_delete_elem(&sock_link_type, &sk);
     return 0;
 }
 
@@ -370,9 +358,7 @@ int rtp_tcp_destroy_sock(struct bpf_raw_tracepoint_args *ctx)
     if (!sk) {
         return 0;
     }
-
-    const u64 id = (u64)(void *)sk;
-    bpf_map_delete_elem(&sock_link_type, &id);
+    bpf_map_delete_elem(&sock_link_type, &sk);
     return 0;
 }
 
@@ -383,17 +369,19 @@ int tp_destroy_sock_func(struct trace_event_raw_tcp_event_sk *ctx)
     if (!sk) {
         return 0; // 如果没有有效的 sock 指针，返回
     }
-
-    const u64 id = (u64)(void *)sk;
-    bpf_map_delete_elem(&sock_link_type, &id);
+    bpf_map_delete_elem(&sock_link_type, &sk);
     return 0;
 }
 
-SEC("kprobe/tcp_close")
-int BPF_KPROBE(tcp_close_entry, struct sock *sk, long timeout)
+SEC("fexit/tcp_close")
+// int BPF_KPROBE(tcp_close_entry, struct sock *sk, long timeout) // 不hook 这个函数，因为他会提前删除
+// int BPF_KRETPROBE(tcp_close_entry, int retval) // ✅
+int BPF_PROG(fexit_tcp_close, struct pt_regs *regs, int retval)
 {
-    const u64 id = (u64)(void *)sk;
-    bpf_map_delete_elem(&sock_link_type, &id);
+    if (retval) {
+        struct sock *sk = (typeof(sk))PT_REGS_PARM1(regs);
+        bpf_map_delete_elem(&sock_link_type, &sk);
+    }
     return 0;
 }
 

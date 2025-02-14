@@ -86,7 +86,7 @@ func Run(ctx context.Context, opt options.Options) {
 					"src=%s, dst=%s, proto=%s, mac-src:%s, mac-dst:%s, len=%d, %s\n",
 				goebpf.NullTerminatedStringToString(ev.ProcessInfo.Name[:]),
 				ev.ProcessInfo.Pid,
-				ev.SkInfo.SkId,
+				ev.SkInfo.SockId,
 				nftrace.TraceType(ev.NftInfo.Type),
 				nftrace.NfFamily(ev.NftInfo.BaseChainFamily).String(),
 				unix.ByteSliceToString(ev.NftInfo.TableName[:]),

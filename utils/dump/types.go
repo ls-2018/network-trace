@@ -405,16 +405,16 @@ func (n netlinkProto) String() string {
 type SockState uint8
 
 const (
-	TCP_ESTABLISHED SockState = 1 + iota
-	TCP_SYN_SENT
-	TCP_SYN_RECV
-	TCP_FIN_WAIT1
-	TCP_FIN_WAIT2
-	TCP_TIME_WAIT
-	TCP_CLOSE
-	TCP_CLOSE_WAIT
-	TCP_LAST_ACK
-	TCP_LISTEN
+	TCP_ESTABLISHED SockState = 1 + iota // 1
+	TCP_SYN_SENT // 2
+	TCP_SYN_RECV// 3
+	TCP_FIN_WAIT1// 4
+	TCP_FIN_WAIT2 // 5
+	TCP_TIME_WAIT// 6
+	TCP_CLOSE// 7
+	TCP_CLOSE_WAIT// 8
+	TCP_LAST_ACK// 9
+	TCP_LISTEN// 10
 	TCP_CLOSING /* Now a valid state */
 	TCP_NEW_SYN_RECV
 	TCP_BOUND_INACTIVE /* Pseudo-state for inet_diag */
