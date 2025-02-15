@@ -6,7 +6,7 @@ include_directories("./ebpf/headers")
 message(STATUS "Current architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
 if (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-    message(STATUS "This is a 64-bit x86 processor.")
+    add_definitions("-D__TARGET_ARCH_x86")
 elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
     add_definitions("-D__TARGET_ARCH_arm64")
 elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")

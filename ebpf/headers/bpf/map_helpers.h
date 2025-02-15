@@ -11,10 +11,10 @@
 static __always_inline void *bpf_map_lookup_or_try_init(void *map, const void *key, const void *init)
 {
     void *val = bpf_map_lookup_elem(map, key);
-    if (val)
+    if (val) {
         return val;
-
-    long _err = bpf_map_update_elem(map, key, init, BPF_NOEXIST);
+    }
+    long _err = bpf_map_update_elem(map, key, init, BPF_ANY);
     if (_err && _err != -EEXIST)
         return 0;
 

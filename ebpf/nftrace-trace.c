@@ -1,5 +1,7 @@
 #include "nftrace.h"
 #include "define/if_ether.h"
+#include "common.h"
+#include <define/netfiler.h>
 
 struct trace_info {
     u32 skb_hash;
@@ -17,6 +19,13 @@ struct {
     __uint(max_entries, 1 << 12);
 } events SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, struct trace_conn_key);
+    __type(value, struct trace_conn_value);
+    __uint(max_entries, 10000000);
+} conn_ctx_map SEC(".maps");
+
 static __always_inline int skb_mac_header_was_set(const struct sk_buff *skb) { return BPF_CORE_READ(skb, mac_header) != (typeof(BPF_CORE_READ(skb, mac_header)))~0U; }
 
 static __always_inline unsigned char *skb_mac_header(const struct sk_buff *skb) { return BPF_CORE_READ(skb, head) + BPF_CORE_READ(skb, mac_header); }
@@ -32,6 +41,7 @@ static __always_inline void handle_nft_ipv4(int *err, struct trace_info *trace, 
         *err = CLEAN_ERR_FAILED;
         return;
     }
+
     trace->conn_info.protocol = BPF_CORE_READ(iph, protocol);
     trace->conn_info.src_ip = bpf_ntohl(BPF_CORE_READ(iph, saddr));
     trace->conn_info.dest_ip = bpf_ntohl(BPF_CORE_READ(iph, daddr));
@@ -95,7 +105,6 @@ static __always_inline void handle_nft_ipv6(int *err, struct trace_info *trace, 
             *err = CLEAN_ERR_FAILED;
             return;
         }
-
         trace->conn_info.src_port = bpf_ntohs(BPF_CORE_READ(tcph, source));
         trace->conn_info.dest_port = bpf_ntohs(BPF_CORE_READ(tcph, dest));
     } else if (trace->conn_info.protocol == IPPROTO_UDP) {
@@ -123,6 +132,7 @@ static __always_inline void handle_nft_ipv6(int *err, struct trace_info *trace, 
 static __always_inline void fill_trace_pkt_info(int *err, struct trace_info *trace, const struct nft_pktinfo *pkt)
 {
     struct sk_buff *skb = BPF_CORE_READ(pkt, skb);
+    struct sock *sk = BPF_CORE_READ(pkt, skb, sk, sk_socket, sk);
 
     void *head = BPF_CORE_READ(skb, head);
     void *end = head + BPF_CORE_READ(skb, end);
@@ -149,18 +159,37 @@ static __always_inline void fill_trace_pkt_info(int *err, struct trace_info *tra
         default:
             return;
     }
-
+    const u32 dest_ip = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+    const u32 src_ip = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+    if (dest_ip <= 0 || src_ip <= 0) {
+        *err = CLEAN_ERR_FAILED;
+        return;
+    }
+    const struct trace_conn_key key = get_conn_key(sk);
+    const struct trace_conn_value *val = bpf_map_lookup_elem(&conn_ctx_map, &key);
+    if (val) {
+        print_conn_info(sk, "ok");
+        // const struct state_info state = { .role = val->role };
+        // set_conn_info(sk, &trace->conn_info, &state, err);
+    } else {
+        print_conn_info(sk, "not ok");
+        // *err = CLEAN_ERR_FAILED;
+        // return;
+    }
     bpf_probe_read_kernel(trace->conn_info.src_mac, sizeof(trace->conn_info.src_mac), BPF_CORE_READ(eth, h_source));
     bpf_probe_read_kernel(trace->conn_info.dest_mac, sizeof(trace->conn_info.dest_mac), BPF_CORE_READ(eth, h_dest));
 
     switch (BPF_CORE_READ(pkt, state, pf)) {
         case NFPROTO_IPV4:
+            print_conn_info(sk, "print_conn_info_v4");
             handle_nft_ipv4(err, trace, skb);
             break;
         case NFPROTO_IPV6:
+            print_conn_info_v6(sk, "print_conn_info_v6");
             handle_nft_ipv6(err, trace, skb);
             break;
         default:
+            bpf_printk("asdxxxx");
             return;
     }
 }
@@ -173,30 +202,11 @@ static __always_inline void fill_trace(int *err, struct trace_info *trace, const
 {
     struct trace_process_info *p = &trace->process_info;
     fill_process_info(p);
-    struct sock *sk = BPF_CORE_READ(pkt, skb, sk);
+    // pkt->state->sk
+    struct sock *sk = BPF_CORE_READ(pkt, state, sk);
     set_sk_info(sk, &trace->sk_info);
-    do {
-        trace->nft_info.type = BPF_CORE_READ_BITFIELD_PROBED(info, type);
-        trace->nft_info.base_chain_family = BPF_CORE_READ(info, basechain, type, family);
-        trace->nft_info.nf_proto = BPF_CORE_READ(pkt, state, pf);
-        bpf_probe_read_kernel_str(trace->nft_info.table_name, sizeof(trace->nft_info.table_name), BPF_CORE_READ(info, basechain, chain.table, name));
-        trace->nft_info.table_handle = BPF_CORE_READ(info, basechain, chain.table, handle);
-        bpf_probe_read_kernel_str(trace->nft_info.chain_name, sizeof(trace->nft_info.chain_name), BPF_CORE_READ(info, basechain, chain.name));
-        trace->nft_info.chain_handle = BPF_CORE_READ(info, basechain, chain.handle);
-        trace->nft_info.rule_handle = BPF_CORE_READ_BITFIELD_PROBED(rule, handle);
-        trace->nft_info.verdict = BPF_CORE_READ(verdict, code);
-        bpf_probe_read_kernel_str(trace->nft_info.jump_target, sizeof(trace->nft_info.jump_target), BPF_CORE_READ(verdict, chain, name));
-        trace->nft_info.policy = BPF_CORE_READ(info, basechain, policy);
-        trace->nft_info.mark = BPF_CORE_READ(pkt, skb, mark);
-    } while (false);
-    do {
-        trace->dev_info.iif = BPF_CORE_READ(pkt, state, in, ifindex);
-        trace->dev_info.iif_type = BPF_CORE_READ(pkt, state, in, type);
-        bpf_probe_read_kernel_str(trace->dev_info.iif_name, sizeof(trace->dev_info.iif_name), BPF_CORE_READ(pkt, state, in, name));
-        trace->dev_info.oif = BPF_CORE_READ(pkt, state, out, ifindex);
-        trace->dev_info.oif_type = BPF_CORE_READ(pkt, state, out, type);
-        bpf_probe_read_kernel_str(trace->dev_info.oif_name, sizeof(trace->dev_info.oif_name), BPF_CORE_READ(pkt, state, out, name));
-    } while (false);
+    set_dev_info(&trace->dev_info, pkt);
+    set_nft_info(&trace->nft_info, pkt, verdict, rule, info);
     fill_trace_pkt_info(err, trace, pkt);
 }
 

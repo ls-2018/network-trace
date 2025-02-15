@@ -99,9 +99,10 @@ func handlePerfEvent(ctx context.Context, events *ebpf.Map) {
 		}
 
 		log.Printf(
-			"process:%-20s pid:%-6d sockId:%-20d %-22s%s%-22s state: %-14s -> %-14s family:%-8s proto:%s ns:%d role:%-6s loc:%d",
+			"process:%-20s pid:%-6d sockId:%-20d %-22s%s%-22s "+
+				"state: %-14s -> %-14s family:%-8s proto:%s ns:%d role:%-6s loc:%d",
 			goebpf.NullTerminatedStringToString(ev.Process.Name[:]), // 不准
-			ev.Process.Pid, // 不准
+			ev.Process.Pid,   // 不准
 			ev.SkInfo.SockId, // 不准
 			fmt.Sprintf("%s:%v", SrcIp, SrcPort),
 			direct,

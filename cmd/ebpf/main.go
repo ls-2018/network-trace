@@ -28,18 +28,18 @@ func main() {
 	//go xdp.Run(ctx)
 
 	//specChan := make(chan *ebpf.MapSpec)
-	//mapChan := make(chan *ebpf.Map)
+	mapChan := make(chan *ebpf.Map)
 
 	go tcp.Run(ctx, options.Options{
 		//Specs: []func(*ebpf.CollectionSpec){
 		//	func(spec *ebpf.CollectionSpec) {
-		//		specChan <- spec.Maps["sock_link_type"]
+		//		specChan <- spec.Maps["conn_ctx_map"]
 		//	},
 		//},
 		Objs: []func(*ebpf.Collection){
-			//func(spec *ebpf.Collection) {
-			//	mapChan <- spec.Maps["sock_link_type"]
-			//},
+			func(spec *ebpf.Collection) {
+				mapChan <- spec.Maps["conn_ctx_map"]
+			},
 		},
 	})
 
@@ -51,12 +51,12 @@ func main() {
 			//},
 		},
 		CollectionOptions: []func(options *ebpf.CollectionOptions){
-			//func(options *ebpf.CollectionOptions) {
-			//	if options.MapReplacements == nil {
-			//		options.MapReplacements = make(map[string]*ebpf.Map)
-			//	}
-			//	options.MapReplacements["sock_link_type"] = <-mapChan
-			//},
+			func(options *ebpf.CollectionOptions) {
+				if options.MapReplacements == nil {
+					options.MapReplacements = make(map[string]*ebpf.Map)
+				}
+				options.MapReplacements["conn_ctx_map"] = <-mapChan
+			},
 		},
 	})
 

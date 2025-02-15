@@ -3,8 +3,6 @@
 #include "version.h"
 #include "bpf_all.h"
 #include "btf/nf_tables.h"
-#include "common.h"
-#include <define/netfiler.h>
 
 struct nft_rule {
     //    struct list_head list;

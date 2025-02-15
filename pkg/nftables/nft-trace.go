@@ -74,15 +74,17 @@ func Run(ctx context.Context, opt options.Options) {
 			if ev.NftInfo.RuleHandle == 0 {
 				continue
 			}
-			fmt.Println("---->", ev.ConnInfo.SrcIp, ev.ConnInfo.SrcIp6.In6U.U6Addr8[:])
+
 			s := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.SrcIp, ev.ConnInfo.SrcIp6.In6U.U6Addr8[:])
 			d := nftrace.Ip2String(ev.ConnInfo.Family == unix.NFPROTO_IPV6, ev.ConnInfo.DestIp, ev.ConnInfo.DestIp6.In6U.U6Addr8[:])
 			log.Printf(
 				//"process:%-20s pid:%-6d skId:%d id:%-10d, type:%s, family:%s, tbl_name:%-6s tbl_handle:%d, chain_name:%s, chain_handle:%d, rule_handle:%-5d, verdict:%-8s, "+
 				//	"jt:%-20s, nfproto:%d, policy:%s, makr:%-5d, iif:%d, iif_type:%d, iif_name:%s, oif:%d, oif_type:%d, oif_name:%s, "+
 				//	"src=%-22s, dst=%-22s, proto=%s, mac-src:%s, mac-dst:%s, len=%-5d, counter=%-20d, ts=%d ns %s\n",
-				"process:%s pid:%d skId:%d type:%s, family:%s, tbl_name:%s tbl_handle:%d, chain_name:%s, chain_handle:%d, rule_handle:%d, verdict:%-8s, "+
-					"jt:%s, nfproto:%s, policy:%s, makr:%d, iif:%d, iif_type:%d, iif_name:%s, oif:%d, oif_type:%d, oif_name:%s, "+
+				"process:%s pid:%d sockId:%d type:%s, family:%s, tbl_name:%s tbl_handle:%d, "+
+					"chain_name:%s, chain_handle:%d, rule_handle:%d, verdict:%-8s, "+
+					"jt:%s, nfproto:%s, policy:%s, makr:%d, iif:%d, iif_type:%d, "+
+					"iif_name:%s, oif:%d, oif_type:%d, oif_name:%s, "+
 					"src=%s, dst=%s, proto=%s, mac-src:%s, mac-dst:%s, len=%d, %s\n",
 				goebpf.NullTerminatedStringToString(ev.ProcessInfo.Name[:]),
 				ev.ProcessInfo.Pid,
